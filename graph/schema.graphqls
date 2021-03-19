@@ -1,0 +1,57 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+enum ChipSortByInput {
+  NAME_ASC
+}
+
+enum BrandSortByInput {
+  NAME_ASC
+}
+
+type Chip {
+  id: Int!
+  brand: Brand!
+  category: String!
+  image: String
+  ingredients: String
+  name: String!
+  slug: String!
+  subcategory: String
+}
+
+type Brand {
+  id: String!
+  count: Int!
+  image: String
+  name: String!
+}
+
+type Review {
+  id: ID!
+  chips: Chip!
+  rating: Int!
+}
+
+type Query {
+  chip(brand: String!, slug: String!): Chip
+  chips(brand: String, order_by: ChipSortByInput, limit: Int = 20, offset: Int = 0): [Chip]!
+  brand(id: String!): Brand
+  brands(order_by: BrandSortByInput): [Brand]!
+  reviews: [Review]!
+}
+
+input NewChip {
+  brandId: String
+  category: String
+  image: String
+  ingredients: String
+  name: String!
+  slug: String
+  subcategory: String
+}
+
+type Mutation {
+  createChip(input: NewChip!): Chip!
+}
