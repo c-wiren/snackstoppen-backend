@@ -11,6 +11,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/c-wiren/snackstoppen-backend/graph"
 	"github.com/c-wiren/snackstoppen-backend/graph/generated"
+	"github.com/go-chi/chi"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -37,16 +38,17 @@ func main() {
 	defer dbpool.Close()
 	log.Printf("Connected to DB")
 
+	router := chi.NewRouter()
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{DB: dbpool}}))
 	if dev {
-		http.Handle("/", playground.Handler("GraphQL playground", "/graphql"))
+		router.Handle("/", playground.Handler("GraphQL playground", "/graphql"))
 	}
-	http.Handle("/graphql", srv)
+	router.Handle("/graphql", srv)
 
 	log.Printf("Server listening on port %s", port)
 	if dev {
 		log.Printf("GraphQL playground running on http://localhost:%s/", port)
 	}
 
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }
