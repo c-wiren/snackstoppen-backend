@@ -13,6 +13,7 @@ import (
 	"github.com/c-wiren/snackstoppen-backend/graph/generated"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/rs/cors"
 )
 
 const defaultPort = "5000"
@@ -39,6 +40,11 @@ func main() {
 	log.Printf("Connected to DB")
 
 	router := chi.NewRouter()
+	router.Use(cors.New(cors.Options{
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"},
+	}).Handler)
+
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{DB: dbpool}}))
 	if dev {
 		router.Handle("/", playground.Handler("GraphQL playground", "/graphql"))

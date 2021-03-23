@@ -16,11 +16,12 @@ func (r *mutationResolver) CreateChip(ctx context.Context, input model.NewChip) 
 }
 
 func (r *queryResolver) Chip(ctx context.Context, brand string, slug string) (*model.Chip, error) {
-	rows, err := r.DB.Query(context.Background(), `SELECT chips.name,category,subcategory,chips.slug,chips.image,ingredients,chips.id,brands.id,brands.image,brands.count,brands.name
+	rows, err := r.DB.Query(ctx, `SELECT chips.name,category,subcategory,chips.slug,chips.image,ingredients,chips.id,brands.id,brands.image,brands.count,brands.name
 	FROM chips INNER JOIN brands ON chips.brand=brands.id WHERE chips.brand=$1 AND chips.slug=$2 LIMIT 1`, brand, slug)
 	if err != nil {
 		fmt.Print(err)
 	}
+	defer rows.Close()
 	if rows.Next() {
 		chip := &model.Chip{}
 		brand := &model.Brand{}
@@ -59,7 +60,7 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model
 		args = append(args, offset)
 	}
 	var chips []*model.Chip
-	rows, err := r.DB.Query(context.Background(), q, args...)
+	rows, err := r.DB.Query(ctx, q, args...)
 	if err != nil {
 		fmt.Print(err)
 	}
@@ -78,10 +79,11 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model
 }
 
 func (r *queryResolver) Brand(ctx context.Context, id string) (*model.Brand, error) {
-	rows, err := r.DB.Query(context.Background(), `SELECT id, image, name, count FROM brands WHERE id=$1 LIMIT 1`, id)
+	rows, err := r.DB.Query(ctx, `SELECT id, image, name, count FROM brands WHERE id=$1 LIMIT 1`, id)
 	if err != nil {
 		fmt.Print(err)
 	}
+	defer rows.Close()
 	if rows.Next() {
 		brand := &model.Brand{}
 		err := rows.Scan(&brand.ID, &brand.Image, &brand.Name, &brand.Count)
@@ -99,7 +101,7 @@ func (r *queryResolver) Brands(ctx context.Context, orderBy *model.BrandSortByIn
 	if orderBy != nil && *orderBy == model.BrandSortByInputNameAsc {
 		q += " ORDER BY name"
 	}
-	rows, err := r.DB.Query(context.Background(), q)
+	rows, err := r.DB.Query(ctx, q)
 	if err != nil {
 		fmt.Print(err)
 	}
