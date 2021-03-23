@@ -13,6 +13,3 @@
 
 # Mac meta files
 .DS_Store
-
-# Build folder binary
-build/server
