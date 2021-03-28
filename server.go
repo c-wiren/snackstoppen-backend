@@ -9,6 +9,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/c-wiren/snackstoppen-backend/auth"
 	"github.com/c-wiren/snackstoppen-backend/graph"
 	"github.com/c-wiren/snackstoppen-backend/graph/generated"
 	"github.com/go-chi/chi"
@@ -17,15 +18,21 @@ import (
 )
 
 const defaultPort = "5000"
+const defaultSecret = "secret"
 const dbURLDev = "postgresql://localhost/snackstoppen_dev"
 
 var dev bool
+var secret string
 
 func main() {
 	dev = os.Getenv("APP_ENV") != "production"
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
+	}
+	secret := os.Getenv("SECRET")
+	if secret == "" {
+		secret = defaultSecret
 	}
 	dbURL := os.Getenv("DATABASE_URL")
 	if dev {
@@ -44,6 +51,8 @@ func main() {
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"},
 	}).Handler)
+
+	router.Use(auth.Middleware())
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{DB: dbpool}}))
 	if dev {

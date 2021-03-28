@@ -2,8 +2,14 @@
 #
 # https://gqlgen.com/getting-started/
 
+scalar Time
+
 enum ChipSortByInput {
   NAME_ASC
+}
+
+enum ReviewSortByInput {
+  DATE_DESC
 }
 
 enum BrandSortByInput {
@@ -29,9 +35,22 @@ type Brand {
 }
 
 type Review {
-  id: ID!
-  chips: Chip!
+  id: Int!
+  chips: Chip
   rating: Int!
+  review: String
+  user: User
+  created: Time!
+  edited: Time
+}
+
+type User {
+  id: Int!
+  username: String!
+  firstname: String
+  lastname: String
+  created: Time
+  image: String
 }
 
 type Query {
@@ -39,19 +58,47 @@ type Query {
   chips(brand: String, order_by: ChipSortByInput, limit: Int = 20, offset: Int = 0): [Chip]!
   brand(id: String!): Brand
   brands(order_by: BrandSortByInput): [Brand]!
-  reviews: [Review]!
+  reviews(chips: Int, author: Int, limit: Int = 10, offset: Int = 0, order_by: ReviewSortByInput = DATE_DESC): [Review]!
+  user: User
+}
+
+type LoginResponse {
+  user: User!
+  token: String!
+  refresh: String
 }
 
 input NewChip {
-  brandId: String
-  category: String
+  brand: String!
+  category: String!
   image: String
   ingredients: String
   name: String!
-  slug: String
+  slug: String!
   subcategory: String
 }
 
+input NewUser {
+  name: String!
+  image: String
+  password: String!
+  email: String!
+  code: String!
+  token: String!
+}
+
+input NewReview {
+  chips: Int!
+  rating: Int!
+  review: String
+}
+
 type Mutation {
-  createChip(input: NewChip!): Chip!
+  createReview(review: NewReview!): Review!
+  createChip(chip: NewChip!): Boolean
+  createUser(user: NewUser!): String!
+  validateEmail(email: String!): String!
+  login(email: String!, password: String!): LoginResponse!
+  refresh(token: String!): LoginResponse!
+  logoutAll: Boolean
 }
