@@ -14,12 +14,14 @@ import (
 	"github.com/c-wiren/snackstoppen-backend/graph/generated"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/mailgun/mailgun-go"
 	"github.com/rs/cors"
 )
 
 const defaultPort = "5000"
 const defaultSecret = "secret"
 const dbURLDev = "postgresql://localhost/snackstoppen_dev"
+const mailgunDomain = "sandbox797116ba525741268d6b789b03c15c5b.mailgun.org"
 
 var dev bool
 var secret string
@@ -54,7 +56,7 @@ func main() {
 
 	router.Use(auth.Middleware())
 
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{DB: dbpool}}))
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{DB: dbpool, Mailgun: mailgun.NewMailgun(mailgunDomain, os.Getenv("MAILGUN_KEY"))}}))
 	if dev {
 		router.Handle("/", playground.Handler("GraphQL playground", "/graphql"))
 	}
