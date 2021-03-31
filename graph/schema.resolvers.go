@@ -25,7 +25,7 @@ func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewRev
 	}
 
 	// Insert review into DB
-	rows, err := r.DB.Query(ctx, `INSERT INTO reviews (chips, rating, review, author)
+	rows, err := r.DB.Query(ctx, `INSERT INTO reviews (chips_id, rating, review, user_id)
 	VALUES ($1, $2, $3, $4)
 	RETURNING id, review, rating, created`, review.Chips, review.Rating, review.Review, user.ID)
 	if !rows.Next() || err != nil {
@@ -46,7 +46,7 @@ func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewRev
 
 func (r *mutationResolver) CreateChip(ctx context.Context, chip model.NewChip) (*bool, error) {
 	// Insert chip into DB
-	commandTag, err := r.DB.Exec(ctx, `INSERT INTO chips (name,category,subcategory,slug,image,ingredients,brand)
+	commandTag, err := r.DB.Exec(ctx, `INSERT INTO chips (name,category,subcategory,slug,image,ingredients,brand_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		chip.Name, chip.Category, chip.Subcategory, chip.Slug, chip.Image, chip.Ingredients, chip.Brand)
 	if commandTag.RowsAffected() != 1 || err != nil {
@@ -243,7 +243,7 @@ func (r *mutationResolver) LogoutAll(ctx context.Context) (*bool, error) {
 
 func (r *queryResolver) Chip(ctx context.Context, brand string, slug string) (*model.Chip, error) {
 	rows, err := r.DB.Query(ctx, `SELECT chips.name,category,subcategory,chips.slug,chips.image,ingredients,chips.id,brands.id,brands.image,brands.count,brands.name
-	FROM chips INNER JOIN brands ON chips.brand=brands.id WHERE chips.brand=$1 AND chips.slug=$2 LIMIT 1`, brand, slug)
+	FROM chips INNER JOIN brands ON chips.brand_id=brands.id WHERE chips.brand_id=$1 AND chips.slug=$2 LIMIT 1`, brand, slug)
 	if err != nil {
 		fmt.Print(err)
 	}
@@ -266,10 +266,10 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model
 	var args []interface{}
 	q := `
 	SELECT chips.name,category,subcategory,chips.slug,chips.image,ingredients,chips.id,brands.id,brands.image,brands.count,brands.name
-	FROM chips INNER JOIN brands ON chips.brand=brands.id`
+	FROM chips INNER JOIN brands ON chips.brand_id=brands.id`
 	if brand != nil {
 		argCount++
-		q += fmt.Sprint(" WHERE chips.brand=$", argCount)
+		q += fmt.Sprint(" WHERE chips.brand_id=$", argCount)
 		args = append(args, brand)
 	}
 	if orderBy != nil && *orderBy == model.ChipSortByInputNameAsc {
@@ -344,14 +344,14 @@ func (r *queryResolver) Brands(ctx context.Context, orderBy *model.BrandSortByIn
 
 func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error) {
 	if chips != nil && author != nil {
-		return nil, gqlerror.Errorf("Select by either chip or author")
+		return nil, gqlerror.Errorf("Select by either chip or user")
 	}
 	if chips != nil {
 		argCount := 0
 		var args []interface{}
 		q := `
 		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, users.username, users.firstname, users.lastname, users.image
-		FROM reviews INNER JOIN users ON reviews.author=users.id`
+		FROM reviews INNER JOIN users ON reviews.user_id=users.id`
 		argCount++
 		q += fmt.Sprint(" WHERE reviews.chips=$", argCount)
 		args = append(args, chips)
@@ -392,10 +392,10 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		q := `
 		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, chips.name, chips.slug, brands.id, brands.name
 		FROM reviews
-		INNER JOIN chips ON reviews.chips=chips.id
-		INNER JOIN brands ON chips.brand=brands.id`
+		INNER JOIN chips ON reviews.chips_id=chips.id
+		INNER JOIN brands ON chips.brand_id=brands.id`
 		argCount++
-		q += fmt.Sprint(" WHERE reviews.author=$", argCount)
+		q += fmt.Sprint(" WHERE reviews.user_id=$", argCount)
 		args = append(args, author)
 		if orderBy != nil && *orderBy == model.ReviewSortByInputDateDesc {
 			q += " ORDER BY reviews.created DESC"
