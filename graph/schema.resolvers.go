@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/c-wiren/snackstoppen-backend/auth"
 	"github.com/c-wiren/snackstoppen-backend/graph/generated"
 	"github.com/c-wiren/snackstoppen-backend/graph/model"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -18,14 +19,20 @@ import (
 )
 
 func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewReview) (*model.Review, error) {
+	user := auth.ForContext(ctx)
+	if user == nil {
+		return nil, gqlerror.Errorf("Must be logged in")
+	}
+
 	// Insert review into DB
 	rows, err := r.DB.Query(ctx, `INSERT INTO reviews (chips, rating, review, author)
 	VALUES ($1, $2, $3, $4)
-	RETURNING id, review, rating, created`, review.Chips, review.Rating, review.Review, 1)
+	RETURNING id, review, rating, created`, review.Chips, review.Rating, review.Review, user.ID)
 	if !rows.Next() || err != nil {
 		fmt.Println(err)
 		return nil, gqlerror.Errorf("Insert failed")
 	}
+	defer rows.Close()
 	var newReview model.Review
 	newReview.User = new(model.User)
 	err = rows.Scan(&newReview.ID, &newReview.Review, &newReview.Rating, &newReview.Created)
@@ -49,7 +56,7 @@ func (r *mutationResolver) CreateChip(ctx context.Context, chip model.NewChip) (
 	return nil, nil
 }
 
-func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (string, error) {
+func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (*model.LoginResponse, error) {
 	// Parse JWT
 	emailToken, err := jwt.Parse(user.Token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -59,7 +66,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 	})
 	if err != nil || !emailToken.Valid {
 		fmt.Println(err)
-		return "", gqlerror.Errorf("The code is expired")
+		return nil, gqlerror.Errorf("The code is expired")
 	}
 	claims, ok := emailToken.Claims.(jwt.MapClaims)
 	if !ok {
@@ -70,13 +77,13 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 
 	// Check if confirmed email is the same
 	if email != user.Email {
-		return "", gqlerror.Errorf("Incorrect email address")
+		return nil, gqlerror.Errorf("Incorrect email address")
 	}
 
 	// Check if entered code is correct
 	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(user.Code))
 	if err != nil {
-		return "", gqlerror.Errorf("Incorrect code")
+		return nil, gqlerror.Errorf("Incorrect code")
 	}
 
 	// Create password hash
@@ -84,26 +91,34 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 
 	// TODO: Insert all fields
 	// Insert user into DB
-	commandTag, err := r.DB.Exec(ctx, `INSERT INTO users (username, email, password)
-	VALUES ($1, $2, $3)`, user.Name, user.Email, string(passwordHash))
-	if commandTag.RowsAffected() != 1 || err != nil {
-		return "", gqlerror.Errorf("Incorrect email address")
+	rows, err := r.DB.Query(ctx, `INSERT INTO users (username, email, password)
+	VALUES ($1, $2, $3)
+	RETURNING id, role`, user.Name, user.Email, string(passwordHash))
+	if !rows.Next() || err != nil {
+		return nil, gqlerror.Errorf("Could not create user")
+	}
+	defer rows.Close()
+	completeUser := model.CompleteUser{}
+	err = rows.Scan(&completeUser.Username, &completeUser.Password, &completeUser.ID, &completeUser.Email, &completeUser.Firstname, &completeUser.Lastname, &completeUser.Role, &completeUser.Image, &completeUser.Created, &completeUser.Logout)
+	if err != nil {
+		panic(fmt.Errorf("db row scan error"))
 	}
 
-	// TODO: Add all fields
-	// Create JWT token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"name":  user.Name,
-		"email": user.Email,
-		"exp":   time.Now().Add(time.Minute * 30).Unix(),
-		"iat":   time.Now().Unix(),
-	})
-	tokenString, _ := token.SignedString([]byte("secret"))
-	return tokenString, nil
+	return auth.CreateLoginResponse(
+		completeUser,
+		auth.CreateAccessToken(&completeUser),
+		auth.CreateRefreshToken(&completeUser)), nil
 }
 
 func (r *mutationResolver) ValidateEmail(ctx context.Context, email string) (string, error) {
-	// TODO: Validate input (email)
+	rows, err := r.DB.Query(ctx, "SELECT 1 FROM users WHERE email=$1", email)
+	if err != nil {
+		panic(fmt.Errorf("db query error"))
+	}
+	defer rows.Close()
+	if rows.Next() {
+		return "", gqlerror.Errorf("Email already exists")
+	}
 	// Generate random code
 	nBig, _ := rand.Int(rand.Reader, big.NewInt(10000))
 	code := fmt.Sprintf("%04d", nBig)
@@ -114,7 +129,7 @@ func (r *mutationResolver) ValidateEmail(ctx context.Context, email string) (str
 	// Send email with code
 	message := r.Mailgun.NewMessage("Snackstoppen <noreply@sandbox797116ba525741268d6b789b03c15c5b.mailgun.org>", "Verifieringskod från Snackstoppen", "", email)
 	message.SetHtml(fmt.Sprintf("<p><b>%s</b> är din verifieringskod för Snackstoppen.</p><p>Hälsningar,<br>Snackstoppen</p>", code))
-	_, _, err := r.Mailgun.Send(message)
+	_, _, err = r.Mailgun.Send(message)
 	if err != nil {
 		fmt.Println("Could not send email:", err)
 		return "", gqlerror.Errorf("Internal server error")
@@ -157,37 +172,10 @@ func (r *mutationResolver) Login(ctx context.Context, email string, password str
 		return nil, gqlerror.Errorf("Incorrect password")
 	}
 
-	// Create JWT token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		//"username":  completeUser.Username,
-		//"firstname": completeUser.Firstname,
-		//"lastname":  completeUser.Lastname,
-		"id":   completeUser.ID,
-		"role": completeUser.Role,
-		//"email":     completeUser.Email,
-		//"image":     completeUser.Image,
-		//"created":   completeUser.Created,
-		//"logout":    completeUser.Logout,
-		"exp": time.Now().Add(time.Minute * 30).Unix(),
-		"iat": time.Now().Unix(),
-	})
-	accessToken, _ := token.SignedString([]byte("secret"))
-
-	// Create JWT token
-	token2 := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":     completeUser.ID,
-		"logout": completeUser.Logout,
-		"iat":    time.Now().Unix(),
-	})
-	refreshToken, _ := token2.SignedString([]byte("secret"))
-	return &model.LoginResponse{User: &model.User{
-		Username:  completeUser.Username,
-		Firstname: completeUser.Firstname,
-		Lastname:  completeUser.Lastname,
-		Image:     completeUser.Image,
-	},
-		Token:   accessToken,
-		Refresh: &refreshToken}, nil
+	return auth.CreateLoginResponse(
+		completeUser,
+		auth.CreateAccessToken(&completeUser),
+		auth.CreateRefreshToken(&completeUser)), nil
 }
 
 func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.LoginResponse, error) {
@@ -210,8 +198,7 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 	rawId, _ := claims["id"].(float64)
 	id := int(rawId)
 	rawLogout, _ := claims["logout"].(string)
-	logout, err := time.Parse(time.RFC3339, rawLogout)
-	fmt.Println(err)
+	logout, _ := time.Parse(time.RFC3339, rawLogout)
 
 	// Get user from DB
 	rows, err := r.DB.Query(ctx, `SELECT username, password, id, email, firstname, lastname, role, image, created, logout FROM users WHERE id=$1`, id)
@@ -234,39 +221,20 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 		return nil, gqlerror.Errorf("You have been logged out")
 	}
 
-	// Create JWT token
-	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		//"username":  completeUser.Username,
-		//"firstname": completeUser.Firstname,
-		//"lastname":  completeUser.Lastname,
-		"id":   completeUser.ID,
-		"role": completeUser.Role,
-		//"email":     completeUser.Email,
-		//"image":     completeUser.Image,
-		//"created":   completeUser.Created,
-		//"logout":    completeUser.Logout,
-		"exp": time.Now().Add(time.Minute * 30).Unix(),
-		"iat": time.Now().Unix(),
-	})
-	accessToken, _ := newToken.SignedString([]byte("secret"))
-
-	return &model.LoginResponse{User: &model.User{
-		Username:  completeUser.Username,
-		Firstname: completeUser.Firstname,
-		Lastname:  completeUser.Lastname,
-		Image:     completeUser.Image,
-	},
-		Token: accessToken}, nil
+	return auth.CreateLoginResponse(
+		completeUser,
+		auth.CreateAccessToken(&completeUser),
+		nil), nil
 }
 
 func (r *mutationResolver) LogoutAll(ctx context.Context) (*bool, error) {
 	// TODO: Get user ID from token
-	id := ""
+	user := auth.ForContext(ctx)
 
 	// Update logout date in DB
 	commandTag, err := r.DB.Exec(ctx, `UPDATE users
 	SET logout = NOW()
-	WHERE id=$1`, id)
+	WHERE id=$1`, user.ID)
 	if commandTag.RowsAffected() != 1 || err != nil {
 		panic(fmt.Errorf("db not updated with logout"))
 	}

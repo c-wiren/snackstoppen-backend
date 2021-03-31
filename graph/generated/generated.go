@@ -110,7 +110,7 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	CreateReview(ctx context.Context, review model.NewReview) (*model.Review, error)
 	CreateChip(ctx context.Context, chip model.NewChip) (*bool, error)
-	CreateUser(ctx context.Context, user model.NewUser) (string, error)
+	CreateUser(ctx context.Context, user model.NewUser) (*model.LoginResponse, error)
 	ValidateEmail(ctx context.Context, email string) (string, error)
 	Login(ctx context.Context, email string, password string) (*model.LoginResponse, error)
 	Refresh(ctx context.Context, token string) (*model.LoginResponse, error)
@@ -644,7 +644,7 @@ input NewReview {
 type Mutation {
   createReview(review: NewReview!): Review!
   createChip(chip: NewChip!): Boolean
-  createUser(user: NewUser!): String!
+  createUser(user: NewUser!): LoginResponse!
   validateEmail(email: String!): String!
   login(email: String!, password: String!): LoginResponse!
   refresh(token: String!): LoginResponse!
@@ -1584,9 +1584,9 @@ func (ec *executionContext) _Mutation_createUser(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*model.LoginResponse)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNLoginResponse2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐLoginResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_validateEmail(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {

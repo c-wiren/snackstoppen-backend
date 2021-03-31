@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/c-wiren/snackstoppen-backend/graph/model"
 	"github.com/dgrijalva/jwt-go"
 )
 
@@ -52,7 +54,12 @@ func Middleware() func(http.Handler) http.Handler {
 			if !ok {
 				panic(fmt.Errorf("token claims error"))
 			}
-			id, _ := claims["id"].(int)
+			rawID, _ := claims["id"].(float64)
+			id := int(rawID)
+			if err != nil {
+				http.Error(w, "{\"errors\":[{\"message\": \"Invalid token\"}]}", http.StatusForbidden)
+				return
+			}
 			role, _ := claims["role"].(string)
 
 			// put it in context
@@ -68,4 +75,43 @@ func Middleware() func(http.Handler) http.Handler {
 func ForContext(ctx context.Context) *User {
 	raw, _ := ctx.Value(userCtxKey).(*User)
 	return raw
+}
+
+func CreateAccessToken(user *model.CompleteUser) *string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		//"username":  user.Username,
+		//"firstname": user.Firstname,
+		//"lastname":  user.Lastname,
+		"id":   user.ID,
+		"role": user.Role,
+		//"email":     user.Email,
+		//"image":     user.Image,
+		//"created":   user.Created,
+		//"logout":    user.Logout,
+		"exp": time.Now().Add(time.Minute * 30).Unix(),
+		"iat": time.Now().Unix(),
+	})
+	accessToken, _ := token.SignedString([]byte("secret"))
+	return &accessToken
+}
+
+func CreateRefreshToken(user *model.CompleteUser) *string {
+	token2 := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":     user.ID,
+		"logout": user.Logout,
+		"iat":    time.Now().Unix(),
+	})
+	refreshToken, _ := token2.SignedString([]byte("secret"))
+	return &refreshToken
+}
+
+func CreateLoginResponse(user model.CompleteUser, accessToken *string, refreshToken *string) *model.LoginResponse {
+	return &model.LoginResponse{User: &model.User{
+		Username:  user.Username,
+		Firstname: user.Firstname,
+		Lastname:  user.Lastname,
+		Image:     user.Image,
+	},
+		Token:   *accessToken,
+		Refresh: refreshToken}
 }

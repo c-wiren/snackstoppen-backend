@@ -96,7 +96,7 @@ input NewReview {
 type Mutation {
   createReview(review: NewReview!): Review!
   createChip(chip: NewChip!): Boolean
-  createUser(user: NewUser!): String!
+  createUser(user: NewUser!): LoginResponse!
   validateEmail(email: String!): String!
   login(email: String!, password: String!): LoginResponse!
   refresh(token: String!): LoginResponse!
