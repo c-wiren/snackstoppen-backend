@@ -57,6 +57,11 @@ type Review struct {
 	Edited  *time.Time `json:"edited"`
 }
 
+type SearchResponse struct {
+	User  *User   `json:"user"`
+	Chips []*Chip `json:"chips"`
+}
+
 type User struct {
 	ID        int        `json:"id"`
 	Username  string     `json:"username"`

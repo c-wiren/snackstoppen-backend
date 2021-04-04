@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/c-wiren/snackstoppen-backend/auth"
@@ -239,6 +240,48 @@ func (r *mutationResolver) LogoutAll(ctx context.Context) (*bool, error) {
 		panic(fmt.Errorf("db not updated with logout"))
 	}
 	return nil, nil
+}
+
+func (r *queryResolver) Search(ctx context.Context, q string) (*model.SearchResponse, error) {
+	q = strings.TrimSpace(q)
+	if len(q) < 3 {
+		return nil, gqlerror.Errorf("Search string too short")
+	}
+	var chips []*model.Chip
+	rows, err := r.DB.Query(ctx, `SELECT chips.id,chips.name,chips.slug,chips.image,chips.brand_id, chips.brand_name
+	FROM (
+		SELECT chips.id, chips.name, chips.brand_id, brands.name as brand_name, slug, chips.image, word_similarity($1,chips.name || ' ' || brands.name) as score, reviews
+        FROM chips inner join brands on chips.brand_id=brands.id)
+	AS chips INNER JOIN brands ON chips.brand_id=brands.id
+	WHERE score > 0.5 ORDER BY score DESC, reviews DESC, length(chips.name), brands.name LIMIT 10;`, q)
+	if err != nil {
+		fmt.Print(err)
+	}
+	for rows.Next() {
+		chip := &model.Chip{}
+		brand := &model.Brand{}
+		chip.Brand = brand
+		err := rows.Scan(&chip.ID, &chip.Name, &chip.Slug, &chip.Image, &brand.ID, &brand.Name)
+		if err != nil {
+			fmt.Print(err)
+		}
+		chips = append(chips, chip)
+	}
+
+	var user *model.User
+	rows, err = r.DB.Query(ctx, `SELECT id, username, firstname,lastname, image FROM users WHERE username=$1`, q)
+	if err != nil {
+		fmt.Print(err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		user = &model.User{}
+		err := rows.Scan(&user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image)
+		if err != nil {
+			fmt.Print(err)
+		}
+	}
+	return &model.SearchResponse{Chips: chips, User: user}, nil
 }
 
 func (r *queryResolver) Chip(ctx context.Context, brand string, slug string) (*model.Chip, error) {
