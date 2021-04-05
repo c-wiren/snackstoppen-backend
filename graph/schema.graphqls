@@ -109,4 +109,7 @@ type Mutation {
   login(email: String!, password: String!): LoginResponse!
   refresh(token: String!): LoginResponse!
   logoutAll: Boolean
+  like(review: Int!): Boolean
+  unlike(review: Int!): Boolean
+  deleteReview(review: Int!): Boolean
 }

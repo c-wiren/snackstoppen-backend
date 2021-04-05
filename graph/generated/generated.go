@@ -72,9 +72,12 @@ type ComplexityRoot struct {
 		CreateChip    func(childComplexity int, chip model.NewChip) int
 		CreateReview  func(childComplexity int, review model.NewReview) int
 		CreateUser    func(childComplexity int, user model.NewUser) int
+		DeleteReview  func(childComplexity int, review int) int
+		Like          func(childComplexity int, review int) int
 		Login         func(childComplexity int, email string, password string) int
 		LogoutAll     func(childComplexity int) int
 		Refresh       func(childComplexity int, token string) int
+		Unlike        func(childComplexity int, review int) int
 		ValidateEmail func(childComplexity int, email string) int
 	}
 
@@ -121,6 +124,9 @@ type MutationResolver interface {
 	Login(ctx context.Context, email string, password string) (*model.LoginResponse, error)
 	Refresh(ctx context.Context, token string) (*model.LoginResponse, error)
 	LogoutAll(ctx context.Context) (*bool, error)
+	Like(ctx context.Context, review int) (*bool, error)
+	Unlike(ctx context.Context, review int) (*bool, error)
+	DeleteReview(ctx context.Context, review int) (*bool, error)
 }
 type QueryResolver interface {
 	Search(ctx context.Context, q string) (*model.SearchResponse, error)
@@ -288,6 +294,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreateUser(childComplexity, args["user"].(model.NewUser)), true
 
+	case "Mutation.deleteReview":
+		if e.complexity.Mutation.DeleteReview == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteReview_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteReview(childComplexity, args["review"].(int)), true
+
+	case "Mutation.like":
+		if e.complexity.Mutation.Like == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_like_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.Like(childComplexity, args["review"].(int)), true
+
 	case "Mutation.login":
 		if e.complexity.Mutation.Login == nil {
 			break
@@ -318,6 +348,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.Refresh(childComplexity, args["token"].(string)), true
+
+	case "Mutation.unlike":
+		if e.complexity.Mutation.Unlike == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unlike_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.Unlike(childComplexity, args["review"].(int)), true
 
 	case "Mutation.validateEmail":
 		if e.complexity.Mutation.ValidateEmail == nil {
@@ -690,6 +732,9 @@ type Mutation {
   login(email: String!, password: String!): LoginResponse!
   refresh(token: String!): LoginResponse!
   logoutAll: Boolean
+  like(review: Int!): Boolean
+  unlike(review: Int!): Boolean
+  deleteReview(review: Int!): Boolean
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -743,6 +788,36 @@ func (ec *executionContext) field_Mutation_createUser_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteReview_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["review"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("review"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["review"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_like_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["review"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("review"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["review"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -779,6 +854,21 @@ func (ec *executionContext) field_Mutation_refresh_args(ctx context.Context, raw
 		}
 	}
 	args["token"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_unlike_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["review"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("review"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["review"] = arg0
 	return args, nil
 }
 
@@ -1790,6 +1880,123 @@ func (ec *executionContext) _Mutation_logoutAll(ctx context.Context, field graph
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().LogoutAll(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_like(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_like_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Like(rctx, args["review"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_unlike(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_unlike_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Unlike(rctx, args["review"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_deleteReview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_deleteReview_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteReview(rctx, args["review"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4095,6 +4302,12 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "logoutAll":
 			out.Values[i] = ec._Mutation_logoutAll(ctx, field)
+		case "like":
+			out.Values[i] = ec._Mutation_like(ctx, field)
+		case "unlike":
+			out.Values[i] = ec._Mutation_unlike(ctx, field)
+		case "deleteReview":
+			out.Values[i] = ec._Mutation_deleteReview(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

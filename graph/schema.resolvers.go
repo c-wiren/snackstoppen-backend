@@ -239,6 +239,39 @@ func (r *mutationResolver) LogoutAll(ctx context.Context) (*bool, error) {
 	return nil, nil
 }
 
+func (r *mutationResolver) Like(ctx context.Context, review int) (*bool, error) {
+	user := auth.ForContext(ctx)
+	// Insert like into database
+	commandTag, err := r.DB.Exec(ctx, `INSERT INTO likes(review_id, user_id)
+	values($1, $2);`, review, user.ID)
+	if commandTag.RowsAffected() != 1 || err != nil {
+		return nil, gqlerror.Errorf("Failed")
+	}
+	return nil, nil
+}
+
+func (r *mutationResolver) Unlike(ctx context.Context, review int) (*bool, error) {
+	user := auth.ForContext(ctx)
+	// Remove like from database
+	commandTag, err := r.DB.Exec(ctx, `DELETE FROM likes
+	WHERE review_id=$1 AND user_id=$2;`, review, user.ID)
+	if commandTag.RowsAffected() != 1 || err != nil {
+		return nil, gqlerror.Errorf("Failed")
+	}
+	return nil, nil
+}
+
+func (r *mutationResolver) DeleteReview(ctx context.Context, review int) (*bool, error) {
+	user := auth.ForContext(ctx)
+	// Remove review from database
+	commandTag, err := r.DB.Exec(ctx, `DELETE FROM reviews
+	WHERE id=$1 AND user_id=$2;`, review, user.ID)
+	if commandTag.RowsAffected() != 1 || err != nil {
+		return nil, gqlerror.Errorf("Failed")
+	}
+	return nil, nil
+}
+
 func (r *queryResolver) Search(ctx context.Context, q string) (*model.SearchResponse, error) {
 	q = strings.TrimSpace(q)
 	if len(q) < 3 {
