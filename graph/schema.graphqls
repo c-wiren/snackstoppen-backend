@@ -85,7 +85,9 @@ input NewChip {
 }
 
 input NewUser {
-  name: String!
+  username: String!
+  firstname: String
+  lastname: String
   image: String
   password: String!
   email: String!

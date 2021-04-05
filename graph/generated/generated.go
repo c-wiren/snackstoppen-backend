@@ -666,7 +666,9 @@ input NewChip {
 }
 
 input NewUser {
-  name: String!
+  username: String!
+  firstname: String
+  lastname: String
   image: String
   password: String!
   email: String!
@@ -3845,11 +3847,27 @@ func (ec *executionContext) unmarshalInputNewUser(ctx context.Context, obj inter
 
 	for k, v := range asMap {
 		switch k {
-		case "name":
+		case "username":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("username"))
+			it.Username, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "firstname":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("firstname"))
+			it.Firstname, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "lastname":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastname"))
+			it.Lastname, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}

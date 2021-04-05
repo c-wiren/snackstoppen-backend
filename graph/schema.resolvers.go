@@ -90,17 +90,16 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 	// Create password hash
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(user.Password), 10)
 
-	// TODO: Insert all fields
 	// Insert user into DB
-	rows, err := r.DB.Query(ctx, `INSERT INTO users (username, email, password)
-	VALUES ($1, $2, $3)
-	RETURNING id, role`, user.Name, user.Email, string(passwordHash))
+	rows, err := r.DB.Query(ctx, `INSERT INTO users (username, email, password, firstname, lastname)
+	VALUES ($1, $2, $3, $4, $5)
+	RETURNING username, id, email, firstname, lastname, role, image, created, logout`, user.Username, user.Email, string(passwordHash), user.Firstname, user.Lastname)
 	if !rows.Next() || err != nil {
 		return nil, gqlerror.Errorf("Could not create user")
 	}
 	defer rows.Close()
 	completeUser := model.CompleteUser{}
-	err = rows.Scan(&completeUser.Username, &completeUser.Password, &completeUser.ID, &completeUser.Email, &completeUser.Firstname, &completeUser.Lastname, &completeUser.Role, &completeUser.Image, &completeUser.Created, &completeUser.Logout)
+	err = rows.Scan(&completeUser.Username, &completeUser.ID, &completeUser.Email, &completeUser.Firstname, &completeUser.Lastname, &completeUser.Role, &completeUser.Image, &completeUser.Created, &completeUser.Logout)
 	if err != nil {
 		panic(fmt.Errorf("db row scan error"))
 	}
@@ -229,9 +228,7 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 }
 
 func (r *mutationResolver) LogoutAll(ctx context.Context) (*bool, error) {
-	// TODO: Get user ID from token
 	user := auth.ForContext(ctx)
-
 	// Update logout date in DB
 	commandTag, err := r.DB.Exec(ctx, `UPDATE users
 	SET logout = NOW()
@@ -247,13 +244,23 @@ func (r *queryResolver) Search(ctx context.Context, q string) (*model.SearchResp
 	if len(q) < 3 {
 		return nil, gqlerror.Errorf("Search string too short")
 	}
+	qArray := strings.Fields(q)
+	qArgs := make([]interface{}, len(qArray))
+	for i, str := range qArray {
+		qArgs[i] = str
+	}
+	query := `SELECT chips.id,chips.name,chips.slug,chips.image,chips.brand_id, brands.name
+	FROM chips INNER JOIN brands ON chips.brand_id=brands.id
+	WHERE`
+	for i := range qArray {
+		if i > 0 {
+			query += " and"
+		}
+		query += fmt.Sprintf(` word_similarity($%d, chips.name || ' ' || brands.name) > 0.6`, i+1)
+	}
+	query += `ORDER BY reviews DESC, length(chips.name), brands.name LIMIT 10;`
 	var chips []*model.Chip
-	rows, err := r.DB.Query(ctx, `SELECT chips.id,chips.name,chips.slug,chips.image,chips.brand_id, chips.brand_name
-	FROM (
-		SELECT chips.id, chips.name, chips.brand_id, brands.name as brand_name, slug, chips.image, word_similarity($1,chips.name || ' ' || brands.name) as score, reviews
-        FROM chips inner join brands on chips.brand_id=brands.id)
-	AS chips INNER JOIN brands ON chips.brand_id=brands.id
-	WHERE score > 0.5 ORDER BY score DESC, reviews DESC, length(chips.name), brands.name LIMIT 10;`, q)
+	rows, err := r.DB.Query(ctx, query, qArgs...)
 	if err != nil {
 		fmt.Print(err)
 	}

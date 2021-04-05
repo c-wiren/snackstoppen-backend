@@ -39,12 +39,14 @@ type NewReview struct {
 }
 
 type NewUser struct {
-	Name     string  `json:"name"`
-	Image    *string `json:"image"`
-	Password string  `json:"password"`
-	Email    string  `json:"email"`
-	Code     string  `json:"code"`
-	Token    string  `json:"token"`
+	Username  string  `json:"username"`
+	Firstname *string `json:"firstname"`
+	Lastname  *string `json:"lastname"`
+	Image     *string `json:"image"`
+	Password  string  `json:"password"`
+	Email     string  `json:"email"`
+	Code      string  `json:"code"`
+	Token     string  `json:"token"`
 }
 
 type Review struct {
