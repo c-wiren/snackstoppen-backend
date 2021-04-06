@@ -29,8 +29,11 @@ func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewRev
 	rows, err := r.DB.Query(ctx, `INSERT INTO reviews (chips_id, rating, review, user_id)
 	VALUES ($1, $2, $3, $4)
 	RETURNING id, review, rating, created`, review.Chips, review.Rating, review.Review, user.ID)
-	if !rows.Next() || err != nil {
+	if err != nil {
 		fmt.Println(err)
+		panic(fmt.Errorf("insert review failed"))
+	}
+	if !rows.Next() {
 		return nil, gqlerror.Errorf("Insert failed")
 	}
 	defer rows.Close()

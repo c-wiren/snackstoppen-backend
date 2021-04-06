@@ -12,7 +12,7 @@ import (
 	"github.com/c-wiren/snackstoppen-backend/auth"
 	"github.com/c-wiren/snackstoppen-backend/graph"
 	"github.com/c-wiren/snackstoppen-backend/graph/generated"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mailgun/mailgun-go/v4"
 	"github.com/rs/cors"
