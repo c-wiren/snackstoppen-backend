@@ -127,13 +127,10 @@ func (r *mutationResolver) ValidateEmail(ctx context.Context, email string) (str
 	nBig, _ := rand.Int(rand.Reader, big.NewInt(10000))
 	code := fmt.Sprintf("%04d", nBig)
 
-	// Temporarily print code
-	fmt.Println("Verification code:", code)
-
 	// Send email with code
-	message := r.Mailgun.NewMessage("Snackstoppen <noreply@sandbox797116ba525741268d6b789b03c15c5b.mailgun.org>", "Verifieringskod från Snackstoppen", "", email)
+	message := r.Mailgun.NewMessage("Snackstoppen <noreply@snackstoppen.se>", "Verifieringskod från Snackstoppen", "", email)
 	message.SetHtml(fmt.Sprintf("<p><b>%s</b> är din verifieringskod för Snackstoppen.</p><p>Hälsningar,<br>Snackstoppen</p>", code))
-	_, _, err = r.Mailgun.Send(message)
+	_, _, err = r.Mailgun.Send(ctx, message)
 	if err != nil {
 		fmt.Println(err)
 		panic(fmt.Errorf("could not send mailgun email"))

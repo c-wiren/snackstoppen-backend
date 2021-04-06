@@ -2,7 +2,7 @@ package graph
 
 import (
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/mailgun/mailgun-go"
+	"github.com/mailgun/mailgun-go/v4"
 )
 
 //go:generate go run github.com/99designs/gqlgen
