@@ -19,12 +19,10 @@ import (
 )
 
 const defaultPort = "5000"
-const defaultSecret = "secret"
 const dbURLDev = "postgresql://localhost/snackstoppen_dev"
 const mailgunDomain = "sandbox797116ba525741268d6b789b03c15c5b.mailgun.org"
 
 var dev bool
-var secret string
 
 func main() {
 	dev = os.Getenv("APP_ENV") != "production"
@@ -33,8 +31,8 @@ func main() {
 		port = defaultPort
 	}
 	secret := os.Getenv("SECRET")
-	if secret == "" {
-		secret = defaultSecret
+	if secret != "" {
+		auth.Secret = secret
 	}
 	dbURL := os.Getenv("DATABASE_URL")
 	if dev {

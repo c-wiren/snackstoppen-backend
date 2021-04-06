@@ -14,6 +14,7 @@ import (
 // A private key for context that only this package can access. This is important
 // to prevent collisions between different context uses
 var userCtxKey = &contextKey{"user"}
+var Secret = "secret"
 
 type contextKey struct {
 	name string
@@ -44,7 +45,7 @@ func Middleware() func(http.Handler) http.Handler {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 				}
-				return []byte("secret"), nil
+				return []byte(Secret), nil
 			})
 			if err != nil || !token.Valid {
 				http.Error(w, "{\"errors\":[{\"message\": \"Invalid token\",\"extensions\": {\"code\": \"AUTHENTICATION_ERROR\"}}]}", http.StatusOK)
@@ -91,7 +92,7 @@ func CreateAccessToken(user *model.CompleteUser) *string {
 		"exp": time.Now().Add(time.Minute * 30).Unix(),
 		"iat": time.Now().Unix(),
 	})
-	accessToken, _ := token.SignedString([]byte("secret"))
+	accessToken, _ := token.SignedString([]byte(Secret))
 	return &accessToken
 }
 
@@ -101,7 +102,7 @@ func CreateRefreshToken(user *model.CompleteUser) *string {
 		"logout": user.Logout,
 		"iat":    time.Now().Unix(),
 	})
-	refreshToken, _ := token2.SignedString([]byte("secret"))
+	refreshToken, _ := token2.SignedString([]byte(Secret))
 	return &refreshToken
 }
 

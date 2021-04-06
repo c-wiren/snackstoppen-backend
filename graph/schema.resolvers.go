@@ -67,7 +67,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte("secret"), nil
+		return []byte(auth.Secret), nil
 	})
 	if err != nil || !emailToken.Valid {
 		return nil, &gqlerror.Error{Message: "The code is expired", Extensions: map[string]interface{}{"code": "EXPIRED_EMAIL_VERIFICATION"}}
@@ -149,7 +149,7 @@ func (r *mutationResolver) ValidateEmail(ctx context.Context, email string) (str
 		"exp":   time.Now().Add(time.Minute * 10).Unix(),
 		"iat":   time.Now().Unix(),
 	})
-	tokenString, _ := token.SignedString([]byte("secret"))
+	tokenString, _ := token.SignedString([]byte(auth.Secret))
 	return tokenString, nil
 }
 
@@ -188,7 +188,7 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte("secret"), nil
+		return []byte(auth.Secret), nil
 	})
 	if err != nil || !refreshToken.Valid {
 		return nil, gqlerror.Errorf("The session has expired")
