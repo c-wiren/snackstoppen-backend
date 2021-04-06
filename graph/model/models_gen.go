@@ -16,6 +16,17 @@ type Brand struct {
 	Name  string  `json:"name"`
 }
 
+type Chip struct {
+	ID          int     `json:"id"`
+	Brand       *Brand  `json:"brand"`
+	Category    string  `json:"category"`
+	Image       *string `json:"image"`
+	Ingredients *string `json:"ingredients"`
+	Name        string  `json:"name"`
+	Slug        string  `json:"slug"`
+	Subcategory *string `json:"subcategory"`
+}
+
 type LoginResponse struct {
 	User    *User   `json:"user"`
 	Token   string  `json:"token"`

@@ -47,7 +47,7 @@ func Middleware() func(http.Handler) http.Handler {
 				return []byte("secret"), nil
 			})
 			if err != nil || !token.Valid {
-				http.Error(w, "{\"errors\":[{\"message\": \"Invalid token\"}]}", http.StatusForbidden)
+				http.Error(w, "{\"errors\":[{\"message\": \"Invalid token\",\"extensions\": {\"code\": \"AUTHENTICATION_ERROR\"}}]}", http.StatusOK)
 				return
 			}
 			claims, ok := token.Claims.(jwt.MapClaims)
@@ -57,7 +57,7 @@ func Middleware() func(http.Handler) http.Handler {
 			rawID, _ := claims["id"].(float64)
 			id := int(rawID)
 			if err != nil {
-				http.Error(w, "{\"errors\":[{\"message\": \"Invalid token\"}]}", http.StatusForbidden)
+				http.Error(w, "{\"errors\":[{\"message\": \"Invalid token\",\"extensions\": {\"code\": \"AUTHENTICATION_ERROR\"}}]}", http.StatusOK)
 				return
 			}
 			role, _ := claims["role"].(string)

@@ -22,7 +22,7 @@ import (
 func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewReview) (*model.Review, error) {
 	user := auth.ForContext(ctx)
 	if user == nil {
-		return nil, gqlerror.Errorf("Must be logged in")
+		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
 	}
 
 	// Insert review into DB
@@ -46,12 +46,16 @@ func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewRev
 }
 
 func (r *mutationResolver) CreateChip(ctx context.Context, chip model.NewChip) (*bool, error) {
+	user := auth.ForContext(ctx)
+	if user == nil || user.Role != "admin" {
+		return nil, &gqlerror.Error{Message: "Must be admin", Extensions: map[string]interface{}{"code": "FORBIDDEN"}}
+	}
 	// Insert chip into DB
 	commandTag, err := r.DB.Exec(ctx, `INSERT INTO chips (name,category,subcategory,slug,image,ingredients,brand_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		chip.Name, chip.Category, chip.Subcategory, chip.Slug, chip.Image, chip.Ingredients, chip.Brand)
 	if commandTag.RowsAffected() != 1 || err != nil {
-		return nil, gqlerror.Errorf("Incorrect email address")
+		return nil, gqlerror.Errorf("Could not create chip")
 	}
 
 	return nil, nil
@@ -66,8 +70,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 		return []byte("secret"), nil
 	})
 	if err != nil || !emailToken.Valid {
-		fmt.Println(err)
-		return nil, gqlerror.Errorf("The code is expired")
+		return nil, &gqlerror.Error{Message: "The code is expired", Extensions: map[string]interface{}{"code": "EXPIRED_EMAIL_VERIFICATION"}}
 	}
 	claims, ok := emailToken.Claims.(jwt.MapClaims)
 	if !ok {
@@ -84,7 +87,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 	// Check if entered code is correct
 	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(user.Code))
 	if err != nil {
-		return nil, gqlerror.Errorf("Incorrect code")
+		return nil, &gqlerror.Error{Message: "Incorrect code", Extensions: map[string]interface{}{"code": "INVALID_EMAIL_VERIFICATION"}}
 	}
 
 	// Create password hash
@@ -111,13 +114,14 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 }
 
 func (r *mutationResolver) ValidateEmail(ctx context.Context, email string) (string, error) {
+	// Check if email exists
 	rows, err := r.DB.Query(ctx, "SELECT 1 FROM users WHERE email=$1", email)
 	if err != nil {
 		panic(fmt.Errorf("db query error"))
 	}
 	defer rows.Close()
 	if rows.Next() {
-		return "", gqlerror.Errorf("Email already exists")
+		return "", &gqlerror.Error{Message: "Email already exists", Extensions: map[string]interface{}{"code": "EXISTING_EMAIL"}}
 	}
 	// Generate random code
 	nBig, _ := rand.Int(rand.Reader, big.NewInt(10000))
@@ -131,8 +135,8 @@ func (r *mutationResolver) ValidateEmail(ctx context.Context, email string) (str
 	message.SetHtml(fmt.Sprintf("<p><b>%s</b> är din verifieringskod för Snackstoppen.</p><p>Hälsningar,<br>Snackstoppen</p>", code))
 	_, _, err = r.Mailgun.Send(message)
 	if err != nil {
-		fmt.Println("Could not send email:", err)
-		return "", gqlerror.Errorf("Internal server error")
+		fmt.Println(err)
+		panic(fmt.Errorf("could not send mailgun email"))
 	}
 
 	// Create hash from code
@@ -157,7 +161,7 @@ func (r *mutationResolver) Login(ctx context.Context, email string, password str
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return nil, gqlerror.Errorf("User does not exist")
+		return nil, &gqlerror.Error{Message: "Incorrect credentials", Extensions: map[string]interface{}{"code": "USER_INPUT_ERROR"}}
 	}
 	completeUser := model.CompleteUser{}
 	err = rows.Scan(&completeUser.Username, &completeUser.Password, &completeUser.ID, &completeUser.Email, &completeUser.Firstname, &completeUser.Lastname, &completeUser.Role, &completeUser.Image, &completeUser.Created, &completeUser.Logout)
@@ -169,7 +173,7 @@ func (r *mutationResolver) Login(ctx context.Context, email string, password str
 	// Check if password is correct
 	err = bcrypt.CompareHashAndPassword([]byte(completeUser.Password), []byte(password))
 	if err != nil {
-		return nil, gqlerror.Errorf("Incorrect password")
+		return nil, &gqlerror.Error{Message: "Incorrect credentials", Extensions: map[string]interface{}{"code": "USER_INPUT_ERROR"}}
 	}
 
 	return auth.CreateLoginResponse(
@@ -218,7 +222,7 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 
 	// Check if all devices has been logged out
 	if logout != completeUser.Logout {
-		return nil, gqlerror.Errorf("You have been logged out")
+		return nil, &gqlerror.Error{Message: "All devices has been logged out", Extensions: map[string]interface{}{"code": "AUTHENTICATION_ERROR"}}
 	}
 
 	return auth.CreateLoginResponse(
@@ -245,7 +249,7 @@ func (r *mutationResolver) Like(ctx context.Context, review int) (*bool, error) 
 	commandTag, err := r.DB.Exec(ctx, `INSERT INTO likes(review_id, user_id)
 	values($1, $2);`, review, user.ID)
 	if commandTag.RowsAffected() != 1 || err != nil {
-		return nil, gqlerror.Errorf("Failed")
+		return nil, gqlerror.Errorf("Could not create like")
 	}
 	return nil, nil
 }
@@ -256,7 +260,7 @@ func (r *mutationResolver) Unlike(ctx context.Context, review int) (*bool, error
 	commandTag, err := r.DB.Exec(ctx, `DELETE FROM likes
 	WHERE review_id=$1 AND user_id=$2;`, review, user.ID)
 	if commandTag.RowsAffected() != 1 || err != nil {
-		return nil, gqlerror.Errorf("Failed")
+		return nil, gqlerror.Errorf("Like could not be removed")
 	}
 	return nil, nil
 }
@@ -267,7 +271,7 @@ func (r *mutationResolver) DeleteReview(ctx context.Context, review int) (*bool,
 	commandTag, err := r.DB.Exec(ctx, `DELETE FROM reviews
 	WHERE id=$1 AND user_id=$2;`, review, user.ID)
 	if commandTag.RowsAffected() != 1 || err != nil {
-		return nil, gqlerror.Errorf("Failed")
+		return nil, gqlerror.Errorf("Review could not be deleted")
 	}
 	return nil, nil
 }
@@ -275,7 +279,7 @@ func (r *mutationResolver) DeleteReview(ctx context.Context, review int) (*bool,
 func (r *queryResolver) Search(ctx context.Context, q string) (*model.SearchResponse, error) {
 	q = strings.TrimSpace(q)
 	if len(q) < 3 {
-		return nil, gqlerror.Errorf("Search string too short")
+		return &model.SearchResponse{}, nil
 	}
 	qArray := strings.Fields(q)
 	qArgs := make([]interface{}, len(qArray))
@@ -296,6 +300,7 @@ func (r *queryResolver) Search(ctx context.Context, q string) (*model.SearchResp
 	rows, err := r.DB.Query(ctx, query, qArgs...)
 	if err != nil {
 		fmt.Print(err)
+		panic(fmt.Errorf("search (chips) query failed"))
 	}
 	for rows.Next() {
 		chip := &model.Chip{}
@@ -304,6 +309,8 @@ func (r *queryResolver) Search(ctx context.Context, q string) (*model.SearchResp
 		err := rows.Scan(&chip.ID, &chip.Name, &chip.Slug, &chip.Image, &brand.ID, &brand.Name)
 		if err != nil {
 			fmt.Print(err)
+			panic(fmt.Errorf("search (chips) scan failed"))
+
 		}
 		chips = append(chips, chip)
 	}
@@ -312,6 +319,8 @@ func (r *queryResolver) Search(ctx context.Context, q string) (*model.SearchResp
 	rows, err = r.DB.Query(ctx, `SELECT id, username, firstname,lastname, image FROM users WHERE username=$1`, q)
 	if err != nil {
 		fmt.Print(err)
+		panic(fmt.Errorf("search (user) query failed"))
+
 	}
 	defer rows.Close()
 	if rows.Next() {
@@ -319,6 +328,8 @@ func (r *queryResolver) Search(ctx context.Context, q string) (*model.SearchResp
 		err := rows.Scan(&user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image)
 		if err != nil {
 			fmt.Print(err)
+			panic(fmt.Errorf("search (user) scan failed"))
+
 		}
 	}
 	return &model.SearchResponse{Chips: chips, User: user}, nil
@@ -329,6 +340,8 @@ func (r *queryResolver) Chip(ctx context.Context, brand string, slug string) (*m
 	FROM chips INNER JOIN brands ON chips.brand_id=brands.id WHERE chips.brand_id=$1 AND chips.slug=$2 LIMIT 1`, brand, slug)
 	if err != nil {
 		fmt.Print(err)
+		panic(fmt.Errorf("chip query failed"))
+
 	}
 	defer rows.Close()
 	if rows.Next() {
@@ -338,6 +351,8 @@ func (r *queryResolver) Chip(ctx context.Context, brand string, slug string) (*m
 		err := rows.Scan(&chip.Name, &chip.Category, &chip.Subcategory, &chip.Slug, &chip.Image, &chip.Ingredients, &chip.ID, &brand.ID, &brand.Image, &brand.Count, &brand.Name)
 		if err != nil {
 			fmt.Print(err)
+			panic(fmt.Errorf("chip scan failed"))
+
 		}
 		return chip, nil
 	}
@@ -372,6 +387,8 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model
 	rows, err := r.DB.Query(ctx, q, args...)
 	if err != nil {
 		fmt.Print(err)
+		panic(fmt.Errorf("chips query failed"))
+
 	}
 	for rows.Next() {
 		chip := &model.Chip{}
@@ -380,6 +397,8 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model
 		err := rows.Scan(&chip.Name, &chip.Category, &chip.Subcategory, &chip.Slug, &chip.Image, &chip.Ingredients, &chip.ID, &brand.ID, &brand.Image, &brand.Count, &brand.Name)
 		if err != nil {
 			fmt.Print(err)
+			panic(fmt.Errorf("chips scan failed"))
+
 		}
 		chips = append(chips, chip)
 	}
@@ -391,6 +410,8 @@ func (r *queryResolver) Brand(ctx context.Context, id string) (*model.Brand, err
 	rows, err := r.DB.Query(ctx, `SELECT id, image, name, count FROM brands WHERE id=$1 LIMIT 1`, id)
 	if err != nil {
 		fmt.Print(err)
+		panic(fmt.Errorf("brand query failed"))
+
 	}
 	defer rows.Close()
 	if rows.Next() {
@@ -398,6 +419,8 @@ func (r *queryResolver) Brand(ctx context.Context, id string) (*model.Brand, err
 		err := rows.Scan(&brand.ID, &brand.Image, &brand.Name, &brand.Count)
 		if err != nil {
 			fmt.Print(err)
+			panic(fmt.Errorf("brand scan failed"))
+
 		}
 		return brand, nil
 	}
@@ -413,12 +436,16 @@ func (r *queryResolver) Brands(ctx context.Context, orderBy *model.BrandSortByIn
 	rows, err := r.DB.Query(ctx, q)
 	if err != nil {
 		fmt.Print(err)
+		panic(fmt.Errorf("brands query failed"))
+
 	}
 	for rows.Next() {
 		brand := &model.Brand{}
 		err := rows.Scan(&brand.ID, &brand.Image, &brand.Name, &brand.Count)
 		if err != nil {
 			fmt.Print(err)
+			panic(fmt.Errorf("brands scan failed"))
+
 		}
 		brands = append(brands, brand)
 	}
@@ -455,6 +482,8 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		rows, err := r.DB.Query(ctx, q, args...)
 		if err != nil {
 			fmt.Print(err)
+			panic(fmt.Errorf("reviews (chips) query failed"))
+
 		}
 		for rows.Next() {
 			review := &model.Review{}
@@ -463,6 +492,8 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &user.Username, &user.Firstname, &user.Lastname, &user.Image)
 			if err != nil {
 				fmt.Print(err)
+				panic(fmt.Errorf("reviews (chips) scan failed"))
+
 			}
 			reviews = append(reviews, review)
 		}
@@ -497,6 +528,8 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		rows, err := r.DB.Query(ctx, q, args...)
 		if err != nil {
 			fmt.Print(err)
+			panic(fmt.Errorf("reviews (author) query failed"))
+
 		}
 		for rows.Next() {
 			review := &model.Review{}
@@ -507,6 +540,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &chips.Name, &chips.Slug, &brand.ID, &brand.Name)
 			if err != nil {
 				fmt.Print(err)
+				panic(fmt.Errorf("reviews (author) query failed"))
 			}
 			reviews = append(reviews, review)
 		}
