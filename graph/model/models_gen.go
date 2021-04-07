@@ -28,9 +28,10 @@ type Chip struct {
 }
 
 type LoginResponse struct {
-	User    *User   `json:"user"`
-	Token   string  `json:"token"`
-	Refresh *string `json:"refresh"`
+	User    *User     `json:"user"`
+	Token   string    `json:"token"`
+	Refresh *string   `json:"refresh"`
+	Expires time.Time `json:"expires"`
 }
 
 type NewChip struct {

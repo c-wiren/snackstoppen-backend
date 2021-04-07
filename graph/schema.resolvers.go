@@ -112,8 +112,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 
 	return auth.CreateLoginResponse(
 		completeUser,
-		auth.CreateAccessToken(&completeUser),
-		auth.CreateRefreshToken(&completeUser)), nil
+		true), nil
 }
 
 func (r *mutationResolver) ValidateEmail(ctx context.Context, email string) (string, error) {
@@ -178,8 +177,7 @@ func (r *mutationResolver) Login(ctx context.Context, email string, password str
 
 	return auth.CreateLoginResponse(
 		completeUser,
-		auth.CreateAccessToken(&completeUser),
-		auth.CreateRefreshToken(&completeUser)), nil
+		true), nil
 }
 
 func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.LoginResponse, error) {
@@ -227,8 +225,7 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 
 	return auth.CreateLoginResponse(
 		completeUser,
-		auth.CreateAccessToken(&completeUser),
-		nil), nil
+		false), nil
 }
 
 func (r *mutationResolver) LogoutAll(ctx context.Context) (*bool, error) {

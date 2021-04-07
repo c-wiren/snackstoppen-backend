@@ -72,6 +72,7 @@ type LoginResponse {
   user: User!
   token: String!
   refresh: String
+  expires: Time!
 }
 
 input NewChip {

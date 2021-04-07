@@ -63,6 +63,7 @@ type ComplexityRoot struct {
 	}
 
 	LoginResponse struct {
+		Expires func(childComplexity int) int
 		Refresh func(childComplexity int) int
 		Token   func(childComplexity int) int
 		User    func(childComplexity int) int
@@ -236,6 +237,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Chip.Subcategory(childComplexity), true
+
+	case "LoginResponse.expires":
+		if e.complexity.LoginResponse.Expires == nil {
+			break
+		}
+
+		return e.complexity.LoginResponse.Expires(childComplexity), true
 
 	case "LoginResponse.refresh":
 		if e.complexity.LoginResponse.Refresh == nil {
@@ -695,6 +703,7 @@ type LoginResponse {
   user: User!
   token: String!
   refresh: String
+  expires: Time!
 }
 
 input NewChip {
@@ -1610,6 +1619,41 @@ func (ec *executionContext) _LoginResponse_refresh(ctx context.Context, field gr
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _LoginResponse_expires(ctx context.Context, field graphql.CollectedField, obj *model.LoginResponse) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "LoginResponse",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Expires, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_createReview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -4247,6 +4291,11 @@ func (ec *executionContext) _LoginResponse(ctx context.Context, sel ast.Selectio
 			}
 		case "refresh":
 			out.Values[i] = ec._LoginResponse_refresh(ctx, field, obj)
+		case "expires":
+			out.Values[i] = ec._LoginResponse_expires(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

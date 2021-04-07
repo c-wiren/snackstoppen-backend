@@ -106,13 +106,39 @@ func CreateRefreshToken(user *model.CompleteUser) *string {
 	return &refreshToken
 }
 
-func CreateLoginResponse(user model.CompleteUser, accessToken *string, refreshToken *string) *model.LoginResponse {
+func CreateLoginResponse(user model.CompleteUser, includeRefreshToken bool) *model.LoginResponse {
+	exp := time.Now().Add(time.Minute * 30)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		//"username":  user.Username,
+		//"firstname": user.Firstname,
+		//"lastname":  user.Lastname,
+		"id":   user.ID,
+		"role": user.Role,
+		//"email":     user.Email,
+		//"image":     user.Image,
+		//"created":   user.Created,
+		//"logout":    user.Logout,
+		"exp": exp.Unix(),
+		"iat": time.Now().Unix(),
+	})
+	accessToken, _ := token.SignedString([]byte(Secret))
+
+	var refreshToken string
+	if includeRefreshToken {
+		token2 := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"id":     user.ID,
+			"logout": user.Logout,
+			"iat":    time.Now().Unix(),
+		})
+		refreshToken, _ = token2.SignedString([]byte(Secret))
+	}
 	return &model.LoginResponse{User: &model.User{
 		Username:  user.Username,
 		Firstname: user.Firstname,
 		Lastname:  user.Lastname,
 		Image:     user.Image,
 	},
-		Token:   *accessToken,
-		Refresh: refreshToken}
+		Token:   accessToken,
+		Refresh: &refreshToken,
+		Expires: exp}
 }
