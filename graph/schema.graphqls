@@ -3,6 +3,7 @@
 # https://gqlgen.com/getting-started/
 
 scalar Time
+scalar Upload
 
 enum ChipSortByInput {
   NAME_ASC
@@ -78,7 +79,7 @@ type LoginResponse {
 input NewChip {
   brand: String!
   category: String!
-  image: String
+  image: Upload
   ingredients: String
   name: String!
   slug: String!

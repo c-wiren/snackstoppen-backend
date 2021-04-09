@@ -15,6 +15,7 @@ import (
 	"github.com/c-wiren/snackstoppen-backend/graph/generated"
 	"github.com/c-wiren/snackstoppen-backend/graph/model"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/minio/minio-go/v7"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -53,14 +54,32 @@ func (r *mutationResolver) CreateChip(ctx context.Context, chip model.NewChip) (
 	if user == nil || user.Role != "admin" {
 		return nil, &gqlerror.Error{Message: "Must be admin", Extensions: map[string]interface{}{"code": "FORBIDDEN"}}
 	}
+	var imageURL *string
+	imageURL = nil
+	if chip.Image != nil {
+		url := chip.Brand + "-" + chip.Slug + ".png"
+		imageURL = &url
+	}
 	// Insert chip into DB
 	commandTag, err := r.DB.Exec(ctx, `INSERT INTO chips (name,category,subcategory,slug,image,ingredients,brand_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		chip.Name, chip.Category, chip.Subcategory, chip.Slug, chip.Image, chip.Ingredients, chip.Brand)
+		chip.Name, chip.Category, chip.Subcategory, chip.Slug, imageURL, chip.Ingredients, chip.Brand)
 	if commandTag.RowsAffected() != 1 || err != nil {
 		return nil, gqlerror.Errorf("Could not create chip")
 	}
 
+	if chip.Image != nil {
+		_, err = r.S3.PutObject(ctx, "snackstoppen", "original/snacks/"+*imageURL, chip.Image.File, chip.Image.Size, minio.PutObjectOptions{ContentType: "image/png"})
+		if err != nil {
+			fmt.Println(err)
+			// Remove chip from db
+			_, err := r.DB.Exec(ctx, `DELETE FROM chips
+			WHERE slug=$1 AND brand_id=$2`,
+				chip.Slug, chip.Brand)
+			fmt.Println(err)
+			panic(fmt.Errorf("create chip s3 upload error"))
+		}
+	}
 	return nil, nil
 }
 

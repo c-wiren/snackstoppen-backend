@@ -15,6 +15,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mailgun/mailgun-go/v4"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/rs/cors"
 )
 
@@ -49,6 +51,16 @@ func main() {
 	mg := mailgun.NewMailgun(mailgunDomain, os.Getenv("MAILGUN_KEY"))
 	mg.SetAPIBase(mailgun.APIBaseEU)
 
+	// Initialize minio client object.
+	minioClient, err := minio.New("static.snackstoppen.se", &minio.Options{
+		Creds:  credentials.NewStaticV4(os.Getenv("S3_ACCESS"), os.Getenv("S3_SECRET"), ""),
+		Secure: true,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to create minio client: %v\n", err)
+		os.Exit(1)
+	}
+
 	router := chi.NewRouter()
 	router.Use(cors.New(cors.Options{
 		AllowCredentials: true,
@@ -56,7 +68,7 @@ func main() {
 	}).Handler)
 
 	router.Use(auth.Middleware())
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{DB: dbpool, Mailgun: mg}}))
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{DB: dbpool, Mailgun: mg, S3: minioClient}}))
 	if dev {
 		router.Handle("/", playground.Handler("GraphQL playground", "/graphql"))
 	}

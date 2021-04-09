@@ -3,6 +3,7 @@ package graph
 import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mailgun/mailgun-go/v4"
+	"github.com/minio/minio-go/v7"
 )
 
 //go:generate go run github.com/99designs/gqlgen
@@ -14,4 +15,5 @@ import (
 type Resolver struct {
 	DB      *pgxpool.Pool
 	Mailgun *mailgun.MailgunImpl
+	S3      *minio.Client
 }

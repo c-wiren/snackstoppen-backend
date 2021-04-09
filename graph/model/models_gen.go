@@ -7,6 +7,8 @@ import (
 	"io"
 	"strconv"
 	"time"
+
+	"github.com/99designs/gqlgen/graphql"
 )
 
 type Brand struct {
@@ -35,13 +37,13 @@ type LoginResponse struct {
 }
 
 type NewChip struct {
-	Brand       string  `json:"brand"`
-	Category    string  `json:"category"`
-	Image       *string `json:"image"`
-	Ingredients *string `json:"ingredients"`
-	Name        string  `json:"name"`
-	Slug        string  `json:"slug"`
-	Subcategory *string `json:"subcategory"`
+	Brand       string          `json:"brand"`
+	Category    string          `json:"category"`
+	Image       *graphql.Upload `json:"image"`
+	Ingredients *string         `json:"ingredients"`
+	Name        string          `json:"name"`
+	Slug        string          `json:"slug"`
+	Subcategory *string         `json:"subcategory"`
 }
 
 type NewReview struct {
