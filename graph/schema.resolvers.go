@@ -4,9 +4,12 @@ package graph
 // will be copied through when generating and any unknown code will be moved to the end.
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
+	"image"
+	"image/png"
 	"math/big"
 	"strings"
 	"time"
@@ -15,6 +18,7 @@ import (
 	"github.com/c-wiren/snackstoppen-backend/graph/generated"
 	"github.com/c-wiren/snackstoppen-backend/graph/model"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/disintegration/imaging"
 	"github.com/minio/minio-go/v7"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/bcrypt"
@@ -55,8 +59,13 @@ func (r *mutationResolver) CreateChip(ctx context.Context, chip model.NewChip) (
 		return nil, &gqlerror.Error{Message: "Must be admin", Extensions: map[string]interface{}{"code": "FORBIDDEN"}}
 	}
 	var imageURL *string
-	imageURL = nil
+	var originalImage image.Image
 	if chip.Image != nil {
+		var err error
+		originalImage, err = png.Decode(chip.Image.File)
+		if err != nil {
+			return nil, &gqlerror.Error{Message: "Invalid image", Extensions: map[string]interface{}{"code": "INVALID_IMAGE"}}
+		}
 		url := chip.Brand + "-" + chip.Slug + ".png"
 		imageURL = &url
 	}
@@ -69,7 +78,27 @@ func (r *mutationResolver) CreateChip(ctx context.Context, chip model.NewChip) (
 	}
 
 	if chip.Image != nil {
-		_, err = r.S3.PutObject(ctx, "snackstoppen", "original/snacks/"+*imageURL, chip.Image.File, chip.Image.Size, minio.PutObjectOptions{ContentType: "image/png"})
+		buff := bytes.NewBuffer(nil)
+		png.Encode(buff, originalImage)
+		_, err = r.S3.PutObject(ctx, "snackstoppen", "original/snacks/"+*imageURL, buff, int64(buff.Len()), minio.PutObjectOptions{ContentType: "image/png"})
+		if err != nil {
+			fmt.Println(err)
+		}
+		resizedImage := imaging.Fit(originalImage, 60, 60, imaging.Box)
+		png.Encode(buff, resizedImage)
+		_, err = r.S3.PutObject(ctx, "snackstoppen", "sm/snacks/"+*imageURL, buff, int64(buff.Len()), minio.PutObjectOptions{ContentType: "image/png"})
+		if err != nil {
+			fmt.Println(err)
+		}
+		resizedImage = imaging.Fit(originalImage, 224, 224, imaging.Box)
+		png.Encode(buff, resizedImage)
+		_, err = r.S3.PutObject(ctx, "snackstoppen", "md/snacks/"+*imageURL, buff, int64(buff.Len()), minio.PutObjectOptions{ContentType: "image/png"})
+		if err != nil {
+			fmt.Println(err)
+		}
+		resizedImage = imaging.Fit(originalImage, 640, 640, imaging.Box)
+		png.Encode(buff, resizedImage)
+		_, err = r.S3.PutObject(ctx, "snackstoppen", "lg/snacks/"+*imageURL, buff, int64(buff.Len()), minio.PutObjectOptions{ContentType: "image/png"})
 		if err != nil {
 			fmt.Println(err)
 			// Remove chip from db
