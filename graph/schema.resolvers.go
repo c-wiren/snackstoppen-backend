@@ -267,7 +267,7 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 	}
 
 	// Check if all devices has been logged out
-	if logout != completeUser.Logout {
+	if logout.Unix() != completeUser.Logout.Unix() {
 		return nil, &gqlerror.Error{Message: "All devices has been logged out", Extensions: map[string]interface{}{"code": "AUTHENTICATION_ERROR"}}
 	}
 
