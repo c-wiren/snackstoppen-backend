@@ -237,7 +237,7 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 		return []byte(auth.Secret), nil
 	})
 	if err != nil || !refreshToken.Valid {
-		return nil, gqlerror.Errorf("The session has expired")
+		return nil, &gqlerror.Error{Message: "The session has expired", Extensions: map[string]interface{}{"code": "AUTHENTICATION_ERROR"}}
 	}
 	claims, ok := refreshToken.Claims.(jwt.MapClaims)
 	if !ok {
