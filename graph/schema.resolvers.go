@@ -257,7 +257,7 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return nil, gqlerror.Errorf("User does not exist")
+		return nil, &gqlerror.Error{Message: "User does not exist", Extensions: map[string]interface{}{"code": "AUTHENTICATION_ERROR"}}
 	}
 	completeUser := model.CompleteUser{}
 	err = rows.Scan(&completeUser.Username, &completeUser.Password, &completeUser.ID, &completeUser.Email, &completeUser.Firstname, &completeUser.Lastname, &completeUser.Role, &completeUser.Image, &completeUser.Created, &completeUser.Logout)
