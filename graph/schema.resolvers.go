@@ -19,6 +19,8 @@ import (
 	"github.com/c-wiren/snackstoppen-backend/graph/model"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/disintegration/imaging"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	minio "github.com/minio/minio-go/v7"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/bcrypt"
@@ -28,6 +30,11 @@ func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewRev
 	user := auth.ForContext(ctx)
 	if user == nil {
 		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
+	}
+
+	err := review.Validate()
+	if err != nil {
+		return nil, &gqlerror.Error{Message: err.Error(), Extensions: map[string]interface{}{"code": "USER_INPUT_ERROR"}}
 	}
 
 	if review.Rating < 1 || review.Rating > 10 {
@@ -62,6 +69,12 @@ func (r *mutationResolver) CreateChip(ctx context.Context, chip model.NewChip) (
 	if user == nil || user.Role != "admin" {
 		return nil, &gqlerror.Error{Message: "Must be admin", Extensions: map[string]interface{}{"code": "FORBIDDEN"}}
 	}
+
+	err := chip.Validate()
+	if err != nil {
+		return nil, &gqlerror.Error{Message: err.Error(), Extensions: map[string]interface{}{"code": "USER_INPUT_ERROR"}}
+	}
+
 	var imageURL *string
 	var originalImage image.Image
 	if chip.Image != nil {
@@ -117,6 +130,11 @@ func (r *mutationResolver) CreateChip(ctx context.Context, chip model.NewChip) (
 }
 
 func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (*model.LoginResponse, error) {
+	err := user.Validate()
+	if err != nil {
+		return nil, &gqlerror.Error{Message: err.Error(), Extensions: map[string]interface{}{"code": "USER_INPUT_ERROR"}}
+	}
+
 	// Parse JWT
 	emailToken, err := jwt.Parse(user.Token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -168,6 +186,10 @@ func (r *mutationResolver) CreateUser(ctx context.Context, user model.NewUser) (
 }
 
 func (r *mutationResolver) ValidateEmail(ctx context.Context, email string) (string, error) {
+	err := validation.Validate(&email, is.EmailFormat)
+	if err != nil {
+		return "", &gqlerror.Error{Message: err.Error(), Extensions: map[string]interface{}{"code": "USER_INPUT_ERROR"}}
+	}
 	// Check if email exists
 	rows, err := r.DB.Query(ctx, "SELECT 1 FROM users WHERE email=$1", email)
 	if err != nil {
