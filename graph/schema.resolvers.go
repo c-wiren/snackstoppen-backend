@@ -206,7 +206,7 @@ func (r *mutationResolver) ValidateEmail(ctx context.Context, email string) (str
 
 func (r *mutationResolver) Login(ctx context.Context, email string, password string) (*model.LoginResponse, error) {
 	// Get user from DB
-	rows, err := r.DB.Query(ctx, `SELECT username, password, id, email, firstname, lastname, role, image, created, logout FROM users WHERE email=$1`, email)
+	rows, err := r.DB.Query(ctx, `SELECT username, password, id, email, firstname, lastname, role, image, created, logout FROM users WHERE email=$1 OR username=$2`, email, email)
 	if err != nil {
 		panic(fmt.Errorf("db query error"))
 	}
