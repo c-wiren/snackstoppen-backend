@@ -26,6 +26,8 @@ type Chip {
   name: String!
   slug: String!
   subcategory: String
+  rating: Float!
+  reviews: Int!
 }
 
 type Brand {
@@ -43,6 +45,7 @@ type Review {
   user: User
   created: Time!
   edited: Time
+  likes: Int!
 }
 
 type User {

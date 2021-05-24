@@ -19,7 +19,7 @@ import (
 	"github.com/c-wiren/snackstoppen-backend/graph/model"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/disintegration/imaging"
-	"github.com/minio/minio-go/v7"
+	minio "github.com/minio/minio-go/v7"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -30,10 +30,14 @@ func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewRev
 		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
 	}
 
+	if review.Rating < 1 || review.Rating > 10 {
+		return nil, &gqlerror.Error{Message: "Input error", Extensions: map[string]interface{}{"code": "USER_INPUT_ERROR"}}
+	}
+
 	// Insert review into DB
 	rows, err := r.DB.Query(ctx, `INSERT INTO reviews (chips_id, rating, review, user_id)
 	VALUES ($1, $2, $3, $4)
-	RETURNING id, review, rating, created`, review.Chips, review.Rating, review.Review, user.ID)
+	RETURNING id, review, rating, created, likes`, review.Chips, review.Rating, review.Review, user.ID)
 	if err != nil {
 		fmt.Println(err)
 		panic(fmt.Errorf("insert review failed"))
@@ -44,7 +48,7 @@ func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewRev
 	defer rows.Close()
 	var newReview model.Review
 	newReview.User = new(model.User)
-	err = rows.Scan(&newReview.ID, &newReview.Review, &newReview.Rating, &newReview.Created)
+	err = rows.Scan(&newReview.ID, &newReview.Review, &newReview.Rating, &newReview.Created, &newReview.Likes)
 	if err != nil {
 		fmt.Println(err)
 		panic(fmt.Errorf("db scan review failed"))
@@ -381,7 +385,7 @@ func (r *queryResolver) Search(ctx context.Context, q string) (*model.SearchResp
 }
 
 func (r *queryResolver) Chip(ctx context.Context, brand string, slug string) (*model.Chip, error) {
-	rows, err := r.DB.Query(ctx, `SELECT chips.name,category,subcategory,chips.slug,chips.image,ingredients,chips.id,brands.id,brands.image,brands.count,brands.name
+	rows, err := r.DB.Query(ctx, `SELECT chips.name,category,subcategory,chips.slug,chips.image,ingredients,chips.id,chips.rating,chips.reviews,brands.id,brands.image,brands.count,brands.name
 	FROM chips INNER JOIN brands ON chips.brand_id=brands.id WHERE chips.brand_id=$1 AND chips.slug=$2 LIMIT 1`, brand, slug)
 	if err != nil {
 		fmt.Print(err)
@@ -393,7 +397,7 @@ func (r *queryResolver) Chip(ctx context.Context, brand string, slug string) (*m
 		chip := &model.Chip{}
 		brand := &model.Brand{}
 		chip.Brand = brand
-		err := rows.Scan(&chip.Name, &chip.Category, &chip.Subcategory, &chip.Slug, &chip.Image, &chip.Ingredients, &chip.ID, &brand.ID, &brand.Image, &brand.Count, &brand.Name)
+		err := rows.Scan(&chip.Name, &chip.Category, &chip.Subcategory, &chip.Slug, &chip.Image, &chip.Ingredients, &chip.ID, &chip.Rating, &chip.Reviews, &brand.ID, &brand.Image, &brand.Count, &brand.Name)
 		if err != nil {
 			fmt.Print(err)
 			panic(fmt.Errorf("chip scan failed"))
@@ -408,7 +412,7 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model
 	argCount := 0
 	var args []interface{}
 	q := `
-	SELECT chips.name,category,subcategory,chips.slug,chips.image,ingredients,chips.id,brands.id,brands.image,brands.count,brands.name
+	SELECT chips.name,category,subcategory,chips.slug,chips.image,ingredients,chips.id,chips.rating,chips.reviews,brands.id,brands.image,brands.count,brands.name
 	FROM chips INNER JOIN brands ON chips.brand_id=brands.id`
 	if brand != nil {
 		argCount++
@@ -439,7 +443,7 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model
 		chip := &model.Chip{}
 		brand := &model.Brand{}
 		chip.Brand = brand
-		err := rows.Scan(&chip.Name, &chip.Category, &chip.Subcategory, &chip.Slug, &chip.Image, &chip.Ingredients, &chip.ID, &brand.ID, &brand.Image, &brand.Count, &brand.Name)
+		err := rows.Scan(&chip.Name, &chip.Category, &chip.Subcategory, &chip.Slug, &chip.Image, &chip.Ingredients, &chip.ID, &chip.Rating, &chip.Reviews, &brand.ID, &brand.Image, &brand.Count, &brand.Name)
 		if err != nil {
 			fmt.Print(err)
 			panic(fmt.Errorf("chips scan failed"))
@@ -505,7 +509,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		argCount := 0
 		var args []interface{}
 		q := `
-		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, users.username, users.firstname, users.lastname, users.image
+		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, users.username, users.firstname, users.lastname, users.image
 		FROM reviews INNER JOIN users ON reviews.user_id=users.id`
 		argCount++
 		q += fmt.Sprint(" WHERE reviews.chips_id=$", argCount)
@@ -534,7 +538,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 			review := &model.Review{}
 			user := &model.User{}
 			review.User = user
-			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &user.Username, &user.Firstname, &user.Lastname, &user.Image)
+			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &user.Username, &user.Firstname, &user.Lastname, &user.Image)
 			if err != nil {
 				fmt.Print(err)
 				panic(fmt.Errorf("reviews (chips) scan failed"))
@@ -549,7 +553,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		argCount := 0
 		var args []interface{}
 		q := `
-		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, chips.name, chips.slug, brands.id, brands.name
+		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, chips.name, chips.slug, brands.id, brands.name
 		FROM reviews
 		INNER JOIN chips ON reviews.chips_id=chips.id
 		INNER JOIN brands ON chips.brand_id=brands.id`
@@ -582,7 +586,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 			brand := &model.Brand{}
 			chips.Brand = brand
 			review.Chips = chips
-			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &chips.Name, &chips.Slug, &brand.ID, &brand.Name)
+			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &chips.Name, &chips.Slug, &brand.ID, &brand.Name)
 			if err != nil {
 				fmt.Print(err)
 				panic(fmt.Errorf("reviews (author) query failed"))

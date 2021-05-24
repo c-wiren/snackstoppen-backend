@@ -27,6 +27,8 @@ type Chip struct {
 	Name        string  `json:"name"`
 	Slug        string  `json:"slug"`
 	Subcategory *string `json:"subcategory"`
+	Rating      float64 `json:"rating"`
+	Reviews     int     `json:"reviews"`
 }
 
 type LoginResponse struct {
@@ -71,6 +73,7 @@ type Review struct {
 	User    *User      `json:"user"`
 	Created time.Time  `json:"created"`
 	Edited  *time.Time `json:"edited"`
+	Likes   int        `json:"likes"`
 }
 
 type SearchResponse struct {

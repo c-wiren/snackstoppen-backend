@@ -58,6 +58,8 @@ type ComplexityRoot struct {
 		Image       func(childComplexity int) int
 		Ingredients func(childComplexity int) int
 		Name        func(childComplexity int) int
+		Rating      func(childComplexity int) int
+		Reviews     func(childComplexity int) int
 		Slug        func(childComplexity int) int
 		Subcategory func(childComplexity int) int
 	}
@@ -97,6 +99,7 @@ type ComplexityRoot struct {
 		Created func(childComplexity int) int
 		Edited  func(childComplexity int) int
 		ID      func(childComplexity int) int
+		Likes   func(childComplexity int) int
 		Rating  func(childComplexity int) int
 		Review  func(childComplexity int) int
 		User    func(childComplexity int) int
@@ -223,6 +226,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Chip.Name(childComplexity), true
+
+	case "Chip.rating":
+		if e.complexity.Chip.Rating == nil {
+			break
+		}
+
+		return e.complexity.Chip.Rating(childComplexity), true
+
+	case "Chip.reviews":
+		if e.complexity.Chip.Reviews == nil {
+			break
+		}
+
+		return e.complexity.Chip.Reviews(childComplexity), true
 
 	case "Chip.slug":
 		if e.complexity.Chip.Slug == nil {
@@ -488,6 +505,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Review.ID(childComplexity), true
 
+	case "Review.likes":
+		if e.complexity.Review.Likes == nil {
+			break
+		}
+
+		return e.complexity.Review.Likes(childComplexity), true
+
 	case "Review.rating":
 		if e.complexity.Review.Rating == nil {
 			break
@@ -657,6 +681,8 @@ type Chip {
   name: String!
   slug: String!
   subcategory: String
+  rating: Float!
+  reviews: Int!
 }
 
 type Brand {
@@ -674,6 +700,7 @@ type Review {
   user: User
   created: Time!
   edited: Time
+  likes: Int!
 }
 
 type User {
@@ -1518,6 +1545,76 @@ func (ec *executionContext) _Chip_subcategory(ctx context.Context, field graphql
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Chip_rating(ctx context.Context, field graphql.CollectedField, obj *model.Chip) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Chip",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rating, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Chip_reviews(ctx context.Context, field graphql.CollectedField, obj *model.Chip) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Chip",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Reviews, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _LoginResponse_user(ctx context.Context, field graphql.CollectedField, obj *model.LoginResponse) (ret graphql.Marshaler) {
@@ -2635,6 +2732,41 @@ func (ec *executionContext) _Review_edited(ctx context.Context, field graphql.Co
 	res := resTmp.(*time.Time)
 	fc.Result = res
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Review_likes(ctx context.Context, field graphql.CollectedField, obj *model.Review) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Review",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Likes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _SearchResponse_user(ctx context.Context, field graphql.CollectedField, obj *model.SearchResponse) (ret graphql.Marshaler) {
@@ -4258,6 +4390,16 @@ func (ec *executionContext) _Chip(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "subcategory":
 			out.Values[i] = ec._Chip_subcategory(ctx, field, obj)
+		case "rating":
+			out.Values[i] = ec._Chip_rating(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "reviews":
+			out.Values[i] = ec._Chip_reviews(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4522,6 +4664,11 @@ func (ec *executionContext) _Review(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "edited":
 			out.Values[i] = ec._Review_edited(ctx, field, obj)
+		case "likes":
+			out.Values[i] = ec._Review_likes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4944,6 +5091,21 @@ func (ec *executionContext) marshalNChip2ᚕᚖgithubᚗcomᚋcᚑwirenᚋsnacks
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
+	res, err := graphql.UnmarshalFloat(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	res := graphql.MarshalFloat(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
