@@ -508,7 +508,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, users.username, users.firstname, users.lastname, users.image
 		FROM reviews INNER JOIN users ON reviews.user_id=users.id`
 		argCount++
-		q += fmt.Sprint(" WHERE reviews.chips=$", argCount)
+		q += fmt.Sprint(" WHERE reviews.chips_id=$", argCount)
 		args = append(args, chips)
 		if orderBy != nil && *orderBy == model.ReviewSortByInputDateDesc {
 			q += " ORDER BY reviews.created DESC"
