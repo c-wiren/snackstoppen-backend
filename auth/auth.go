@@ -133,6 +133,7 @@ func CreateLoginResponse(user model.CompleteUser, includeRefreshToken bool) *mod
 		refreshToken, _ = token2.SignedString([]byte(Secret))
 	}
 	return &model.LoginResponse{User: &model.User{
+		ID:        user.ID,
 		Username:  user.Username,
 		Firstname: user.Firstname,
 		Lastname:  user.Lastname,
