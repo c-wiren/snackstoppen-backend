@@ -527,7 +527,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		argCount := 0
 		var args []interface{}
 		q := `
-		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, users.username, users.firstname, users.lastname, users.image, likes.user_id IS NOT NULL AS liked
+		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, users.id, users.username, users.firstname, users.lastname, users.image, likes.user_id IS NOT NULL AS liked
 		FROM reviews INNER JOIN users ON reviews.user_id=users.id`
 		// Check if user liked a review
 		argCount++
@@ -561,7 +561,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 			review := &model.Review{}
 			user := &model.User{}
 			review.User = user
-			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &review.Liked)
+			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &review.Liked)
 			if err != nil {
 				fmt.Print(err)
 				panic(fmt.Errorf("reviews (chips) scan failed"))
