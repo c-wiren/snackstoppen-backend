@@ -282,6 +282,9 @@ func (r *mutationResolver) Refresh(ctx context.Context, token string) (*model.Lo
 
 func (r *mutationResolver) LogoutAll(ctx context.Context) (*bool, error) {
 	user := auth.ForContext(ctx)
+	if user == nil {
+		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
+	}
 	// Update logout date in DB
 	commandTag, err := r.DB.Exec(ctx, `UPDATE users
 	SET logout = NOW()
@@ -294,6 +297,9 @@ func (r *mutationResolver) LogoutAll(ctx context.Context) (*bool, error) {
 
 func (r *mutationResolver) Like(ctx context.Context, review int) (*bool, error) {
 	user := auth.ForContext(ctx)
+	if user == nil {
+		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
+	}
 	// Insert like into database
 	commandTag, err := r.DB.Exec(ctx, `INSERT INTO likes(review_id, user_id)
 	values($1, $2);`, review, user.ID)
@@ -305,6 +311,9 @@ func (r *mutationResolver) Like(ctx context.Context, review int) (*bool, error) 
 
 func (r *mutationResolver) Unlike(ctx context.Context, review int) (*bool, error) {
 	user := auth.ForContext(ctx)
+	if user == nil {
+		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
+	}
 	// Remove like from database
 	commandTag, err := r.DB.Exec(ctx, `DELETE FROM likes
 	WHERE review_id=$1 AND user_id=$2;`, review, user.ID)
@@ -316,6 +325,9 @@ func (r *mutationResolver) Unlike(ctx context.Context, review int) (*bool, error
 
 func (r *mutationResolver) DeleteReview(ctx context.Context, review int) (*bool, error) {
 	user := auth.ForContext(ctx)
+	if user == nil {
+		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
+	}
 	// Remove review from database
 	commandTag, err := r.DB.Exec(ctx, `DELETE FROM reviews
 	WHERE id=$1 AND user_id=$2;`, review, user.ID)
