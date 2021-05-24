@@ -74,6 +74,7 @@ type Review struct {
 	Created time.Time  `json:"created"`
 	Edited  *time.Time `json:"edited"`
 	Likes   int        `json:"likes"`
+	Liked   bool       `json:"liked"`
 }
 
 type SearchResponse struct {

@@ -502,6 +502,12 @@ func (r *queryResolver) Brands(ctx context.Context, orderBy *model.BrandSortByIn
 }
 
 func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error) {
+	user := auth.ForContext(ctx)
+	var userID *int
+	if user != nil {
+		userID = &user.ID
+	}
+
 	if chips != nil && author != nil {
 		return nil, gqlerror.Errorf("Select by either chip or user")
 	}
@@ -509,8 +515,13 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		argCount := 0
 		var args []interface{}
 		q := `
-		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, users.username, users.firstname, users.lastname, users.image
+		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, users.username, users.firstname, users.lastname, users.image, likes.user_id IS NOT NULL AS liked
 		FROM reviews INNER JOIN users ON reviews.user_id=users.id`
+		// Check if user liked a review
+		argCount++
+		q += fmt.Sprint(" LEFT JOIN likes ON reviews.id=likes.review_id AND likes.user_id=$", argCount)
+		args = append(args, userID)
+
 		argCount++
 		q += fmt.Sprint(" WHERE reviews.chips_id=$", argCount)
 		args = append(args, chips)
@@ -538,7 +549,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 			review := &model.Review{}
 			user := &model.User{}
 			review.User = user
-			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &user.Username, &user.Firstname, &user.Lastname, &user.Image)
+			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &review.Liked)
 			if err != nil {
 				fmt.Print(err)
 				panic(fmt.Errorf("reviews (chips) scan failed"))
@@ -553,10 +564,16 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		argCount := 0
 		var args []interface{}
 		q := `
-		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, chips.name, chips.slug, brands.id, brands.name
+		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, chips.name, chips.slug, brands.id, brands.name, likes.user_id IS NOT NULL AS liked
 		FROM reviews
 		INNER JOIN chips ON reviews.chips_id=chips.id
 		INNER JOIN brands ON chips.brand_id=brands.id`
+
+		// Check if user liked a review
+		argCount++
+		q += fmt.Sprint(" LEFT JOIN likes ON reviews.id=likes.review_id AND likes.user_id=$", argCount)
+		args = append(args, userID)
+
 		argCount++
 		q += fmt.Sprint(" WHERE reviews.user_id=$", argCount)
 		args = append(args, author)
@@ -586,7 +603,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 			brand := &model.Brand{}
 			chips.Brand = brand
 			review.Chips = chips
-			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &chips.Name, &chips.Slug, &brand.ID, &brand.Name)
+			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &chips.Name, &chips.Slug, &brand.ID, &brand.Name, &review.Liked)
 			if err != nil {
 				fmt.Print(err)
 				panic(fmt.Errorf("reviews (author) query failed"))

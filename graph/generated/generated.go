@@ -99,6 +99,7 @@ type ComplexityRoot struct {
 		Created func(childComplexity int) int
 		Edited  func(childComplexity int) int
 		ID      func(childComplexity int) int
+		Liked   func(childComplexity int) int
 		Likes   func(childComplexity int) int
 		Rating  func(childComplexity int) int
 		Review  func(childComplexity int) int
@@ -505,6 +506,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Review.ID(childComplexity), true
 
+	case "Review.liked":
+		if e.complexity.Review.Liked == nil {
+			break
+		}
+
+		return e.complexity.Review.Liked(childComplexity), true
+
 	case "Review.likes":
 		if e.complexity.Review.Likes == nil {
 			break
@@ -701,6 +709,7 @@ type Review {
   created: Time!
   edited: Time
   likes: Int!
+  liked: Boolean!
 }
 
 type User {
@@ -2769,6 +2778,41 @@ func (ec *executionContext) _Review_likes(ctx context.Context, field graphql.Col
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Review_liked(ctx context.Context, field graphql.CollectedField, obj *model.Review) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Review",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Liked, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _SearchResponse_user(ctx context.Context, field graphql.CollectedField, obj *model.SearchResponse) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -4666,6 +4710,11 @@ func (ec *executionContext) _Review(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Review_edited(ctx, field, obj)
 		case "likes":
 			out.Values[i] = ec._Review_likes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "liked":
+			out.Values[i] = ec._Review_liked(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

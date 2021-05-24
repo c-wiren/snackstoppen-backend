@@ -46,6 +46,7 @@ type Review {
   created: Time!
   edited: Time
   likes: Int!
+  liked: Boolean!
 }
 
 type User {
