@@ -11,13 +11,6 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 )
 
-type Brand struct {
-	ID    string  `json:"id"`
-	Count int     `json:"count"`
-	Image *string `json:"image"`
-	Name  string  `json:"name"`
-}
-
 type Chip struct {
 	ID          int     `json:"id"`
 	Brand       *Brand  `json:"brand"`

@@ -18,7 +18,7 @@ enum BrandSortByInput {
 }
 
 type Chip {
-  id: Int!
+  id: ID!
   brand: Brand!
   category: String!
   image: String
@@ -31,14 +31,14 @@ type Chip {
 }
 
 type Brand {
-  id: String!
+  id: ID!
   count: Int!
   image: String
   name: String!
 }
 
 type Review {
-  id: Int!
+  id: ID!
   chips: Chip
   rating: Int!
   review: String
@@ -50,7 +50,7 @@ type Review {
 }
 
 type User {
-  id: Int!
+  id: ID!
   username: String!
   firstname: String
   lastname: String
