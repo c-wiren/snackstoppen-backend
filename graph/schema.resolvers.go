@@ -598,7 +598,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *string,
 		argCount := 0
 		var args []interface{}
 		q := `
-		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, chips.id, chips.name, chips.slug, brands.id, brands.name, likes.user_id IS NOT NULL AS liked
+		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, chips.id, chips.name, chips.slug, chips.image, chips.rating, chips.reviews, chips.category, chips.subcategory, brands.id, brands.name, likes.user_id IS NOT NULL AS liked
 		FROM users
 		INNER JOIN reviews ON users.id=reviews.user_id
 		INNER JOIN chips ON reviews.chips_id=chips.id
@@ -638,7 +638,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *string,
 			brand := &model.Brand{}
 			chips.Brand = brand
 			review.Chips = chips
-			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &chips.ID, &chips.Name, &chips.Slug, &brand.ID, &brand.Name, &review.Liked)
+			err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &chips.ID, &chips.Name, &chips.Slug, &chips.Image, &chips.Rating, &chips.Reviews, &chips.Category, &chips.Subcategory, &brand.ID, &brand.Name, &review.Liked)
 			if err != nil {
 				fmt.Print(err)
 				panic(fmt.Errorf("reviews (author) query failed"))
