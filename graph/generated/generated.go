@@ -89,9 +89,9 @@ type ComplexityRoot struct {
 		Brands  func(childComplexity int, orderBy *model.BrandSortByInput) int
 		Chip    func(childComplexity int, brand string, slug string) int
 		Chips   func(childComplexity int, brand *string, orderBy *model.ChipSortByInput, limit *int, offset *int) int
-		Reviews func(childComplexity int, chips *int, author *int, limit *int, offset *int, orderBy *model.ReviewSortByInput) int
+		Reviews func(childComplexity int, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) int
 		Search  func(childComplexity int, q string) int
-		User    func(childComplexity int) int
+		User    func(childComplexity int, username string) int
 	}
 
 	Review struct {
@@ -139,8 +139,8 @@ type QueryResolver interface {
 	Chips(ctx context.Context, brand *string, orderBy *model.ChipSortByInput, limit *int, offset *int) ([]*model.Chip, error)
 	Brand(ctx context.Context, id string) (*model.Brand, error)
 	Brands(ctx context.Context, orderBy *model.BrandSortByInput) ([]*model.Brand, error)
-	Reviews(ctx context.Context, chips *int, author *int, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error)
-	User(ctx context.Context) (*model.User, error)
+	Reviews(ctx context.Context, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error)
+	User(ctx context.Context, username string) (*model.User, error)
 }
 
 type executableSchema struct {
@@ -457,7 +457,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Reviews(childComplexity, args["chips"].(*int), args["author"].(*int), args["limit"].(*int), args["offset"].(*int), args["order_by"].(*model.ReviewSortByInput)), true
+		return e.complexity.Query.Reviews(childComplexity, args["chips"].(*int), args["author"].(*string), args["limit"].(*int), args["offset"].(*int), args["order_by"].(*model.ReviewSortByInput)), true
 
 	case "Query.search":
 		if e.complexity.Query.Search == nil {
@@ -476,7 +476,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.User(childComplexity), true
+		args, err := ec.field_Query_user_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.User(childComplexity, args["username"].(string)), true
 
 	case "Review.chips":
 		if e.complexity.Review.Chips == nil {
@@ -727,8 +732,8 @@ type Query {
   chips(brand: String, order_by: ChipSortByInput, limit: Int = 20, offset: Int = 0): [Chip]!
   brand(id: String!): Brand
   brands(order_by: BrandSortByInput): [Brand]!
-  reviews(chips: Int, author: Int, limit: Int = 10, offset: Int = 0, order_by: ReviewSortByInput = DATE_DESC): [Review]!
-  user: User
+  reviews(chips: Int, author: String, limit: Int = 10, offset: Int = 0, order_by: ReviewSortByInput = DATE_DESC): [Review]!
+  user(username: String!): User
 }
 
 type SearchResponse {
@@ -1056,10 +1061,10 @@ func (ec *executionContext) field_Query_reviews_args(ctx context.Context, rawArg
 		}
 	}
 	args["chips"] = arg0
-	var arg1 *int
+	var arg1 *string
 	if tmp, ok := rawArgs["author"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("author"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1107,6 +1112,21 @@ func (ec *executionContext) field_Query_search_args(ctx context.Context, rawArgs
 		}
 	}
 	args["q"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["username"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("username"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["username"] = arg0
 	return args, nil
 }
 
@@ -2390,7 +2410,7 @@ func (ec *executionContext) _Query_reviews(ctx context.Context, field graphql.Co
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Reviews(rctx, args["chips"].(*int), args["author"].(*int), args["limit"].(*int), args["offset"].(*int), args["order_by"].(*model.ReviewSortByInput))
+		return ec.resolvers.Query().Reviews(rctx, args["chips"].(*int), args["author"].(*string), args["limit"].(*int), args["offset"].(*int), args["order_by"].(*model.ReviewSortByInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2423,9 +2443,16 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_user_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().User(rctx)
+		return ec.resolvers.Query().User(rctx, args["username"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

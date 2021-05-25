@@ -64,8 +64,8 @@ type Query {
   chips(brand: String, order_by: ChipSortByInput, limit: Int = 20, offset: Int = 0): [Chip]!
   brand(id: String!): Brand
   brands(order_by: BrandSortByInput): [Brand]!
-  reviews(chips: Int, author: Int, limit: Int = 10, offset: Int = 0, order_by: ReviewSortByInput = DATE_DESC): [Review]!
-  user: User
+  reviews(chips: Int, author: String, limit: Int = 10, offset: Int = 0, order_by: ReviewSortByInput = DATE_DESC): [Review]!
+  user(username: String!): User
 }
 
 type SearchResponse {

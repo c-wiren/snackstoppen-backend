@@ -535,7 +535,7 @@ func (r *queryResolver) Brands(ctx context.Context, orderBy *model.BrandSortByIn
 	return brands, nil
 }
 
-func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error) {
+func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error) {
 	user := auth.ForContext(ctx)
 	var userID *int
 	if user != nil {
@@ -599,7 +599,8 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		var args []interface{}
 		q := `
 		SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes, chips.name, chips.slug, brands.id, brands.name, likes.user_id IS NOT NULL AS liked
-		FROM reviews
+		FROM users
+		INNER JOIN reviews ON users.id=reviews.user_id
 		INNER JOIN chips ON reviews.chips_id=chips.id
 		INNER JOIN brands ON chips.brand_id=brands.id`
 
@@ -609,7 +610,7 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 		args = append(args, userID)
 
 		argCount++
-		q += fmt.Sprint(" WHERE reviews.user_id=$", argCount)
+		q += fmt.Sprint(" WHERE users.username=$", argCount)
 		args = append(args, author)
 		if orderBy != nil && *orderBy == model.ReviewSortByInputDateDesc {
 			q += " ORDER BY reviews.created DESC"
@@ -650,8 +651,25 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *int, li
 	return nil, gqlerror.Errorf("Select by either chip or author")
 }
 
-func (r *queryResolver) User(ctx context.Context) (*model.User, error) {
-	panic(fmt.Errorf("not implemented"))
+func (r *queryResolver) User(ctx context.Context, username string) (*model.User, error) {
+	rows, err := r.DB.Query(ctx, `SELECT id, username, firstname, lastname, image, created FROM users WHERE username=$1 LIMIT 1`, username)
+	if err != nil {
+		fmt.Print(err)
+		panic(fmt.Errorf("user query failed"))
+
+	}
+	defer rows.Close()
+	if rows.Next() {
+		user := &model.User{}
+		err := rows.Scan(&user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &user.Created)
+		if err != nil {
+			fmt.Print(err)
+			panic(fmt.Errorf("user scan failed"))
+
+		}
+		return user, nil
+	}
+	return nil, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.
