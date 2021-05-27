@@ -686,7 +686,7 @@ func (r *queryResolver) User(ctx context.Context, username string) (*model.User,
 		userID = &reqUser.ID
 	}
 	rows, err := r.DB.Query(ctx, `
-	SELECT users.id, users.username, users.firstname, users.lastname, users.image, users.created,
+	SELECT users.id, users.username, users.firstname, users.lastname, users.image, users.created, users.following, users.followers,
 	follows.follows_user_id IS NOT NULL AS follow
 	FROM users
 	LEFT JOIN follows ON users.id=follows.follows_user_id AND follows.user_id=$1
@@ -699,7 +699,7 @@ func (r *queryResolver) User(ctx context.Context, username string) (*model.User,
 	defer rows.Close()
 	if rows.Next() {
 		user := &model.User{}
-		err := rows.Scan(&user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &user.Created, &user.Follow)
+		err := rows.Scan(&user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &user.Created, &user.Following, &user.Followers, &user.Follow)
 		if err != nil {
 			fmt.Print(err)
 			panic(fmt.Errorf("user scan failed"))
