@@ -76,10 +76,12 @@ type ComplexityRoot struct {
 		CreateReview  func(childComplexity int, review model.NewReview) int
 		CreateUser    func(childComplexity int, user model.NewUser) int
 		DeleteReview  func(childComplexity int, review int) int
+		Follow        func(childComplexity int, user int) int
 		Like          func(childComplexity int, review int) int
 		Login         func(childComplexity int, email string, password string) int
 		LogoutAll     func(childComplexity int) int
 		Refresh       func(childComplexity int, token string) int
+		Unfollow      func(childComplexity int, user int) int
 		Unlike        func(childComplexity int, review int) int
 		ValidateEmail func(childComplexity int, email string) int
 	}
@@ -92,6 +94,7 @@ type ComplexityRoot struct {
 		Reviews func(childComplexity int, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) int
 		Search  func(childComplexity int, q string) int
 		User    func(childComplexity int, username string) int
+		Users   func(childComplexity int, followers *string, following *string) int
 	}
 
 	Review struct {
@@ -114,6 +117,7 @@ type ComplexityRoot struct {
 	User struct {
 		Created   func(childComplexity int) int
 		Firstname func(childComplexity int) int
+		Follow    func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Image     func(childComplexity int) int
 		Lastname  func(childComplexity int) int
@@ -131,6 +135,8 @@ type MutationResolver interface {
 	LogoutAll(ctx context.Context) (*bool, error)
 	Like(ctx context.Context, review int) (*bool, error)
 	Unlike(ctx context.Context, review int) (*bool, error)
+	Follow(ctx context.Context, user int) (*bool, error)
+	Unfollow(ctx context.Context, user int) (*bool, error)
 	DeleteReview(ctx context.Context, review int) (*bool, error)
 }
 type QueryResolver interface {
@@ -141,6 +147,7 @@ type QueryResolver interface {
 	Brands(ctx context.Context, orderBy *model.BrandSortByInput) ([]*model.Brand, error)
 	Reviews(ctx context.Context, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error)
 	User(ctx context.Context, username string) (*model.User, error)
+	Users(ctx context.Context, followers *string, following *string) ([]*model.User, error)
 }
 
 type executableSchema struct {
@@ -332,6 +339,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteReview(childComplexity, args["review"].(int)), true
 
+	case "Mutation.follow":
+		if e.complexity.Mutation.Follow == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_follow_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.Follow(childComplexity, args["user"].(int)), true
+
 	case "Mutation.like":
 		if e.complexity.Mutation.Like == nil {
 			break
@@ -374,6 +393,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.Refresh(childComplexity, args["token"].(string)), true
+
+	case "Mutation.unfollow":
+		if e.complexity.Mutation.Unfollow == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unfollow_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.Unfollow(childComplexity, args["user"].(int)), true
 
 	case "Mutation.unlike":
 		if e.complexity.Mutation.Unlike == nil {
@@ -483,6 +514,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.User(childComplexity, args["username"].(string)), true
 
+	case "Query.users":
+		if e.complexity.Query.Users == nil {
+			break
+		}
+
+		args, err := ec.field_Query_users_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Users(childComplexity, args["followers"].(*string), args["following"].(*string)), true
+
 	case "Review.chips":
 		if e.complexity.Review.Chips == nil {
 			break
@@ -573,6 +616,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.User.Firstname(childComplexity), true
+
+	case "User.follow":
+		if e.complexity.User.Follow == nil {
+			break
+		}
+
+		return e.complexity.User.Follow(childComplexity), true
 
 	case "User.id":
 		if e.complexity.User.ID == nil {
@@ -724,6 +774,7 @@ type User {
   lastname: String
   created: Time
   image: String
+  follow: Boolean
 }
 
 type Query {
@@ -734,6 +785,7 @@ type Query {
   brands(order_by: BrandSortByInput): [Brand]!
   reviews(chips: Int, author: String, limit: Int = 10, offset: Int = 0, order_by: ReviewSortByInput = DATE_DESC): [Review]!
   user(username: String!): User
+  users(followers: String, following: String): [User]!
 }
 
 type SearchResponse {
@@ -785,6 +837,8 @@ type Mutation {
   logoutAll: Boolean
   like(review: Int!): Boolean
   unlike(review: Int!): Boolean
+  follow(user: Int!): Boolean
+  unfollow(user: Int!): Boolean
   deleteReview(review: Int!): Boolean
 }`, BuiltIn: false},
 }
@@ -854,6 +908,21 @@ func (ec *executionContext) field_Mutation_deleteReview_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_follow_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["user"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("user"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["user"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_like_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -905,6 +974,21 @@ func (ec *executionContext) field_Mutation_refresh_args(ctx context.Context, raw
 		}
 	}
 	args["token"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_unfollow_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["user"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("user"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["user"] = arg0
 	return args, nil
 }
 
@@ -1127,6 +1211,30 @@ func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs m
 		}
 	}
 	args["username"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_users_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["followers"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("followers"))
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["followers"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["following"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("following"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["following"] = arg1
 	return args, nil
 }
 
@@ -2142,6 +2250,84 @@ func (ec *executionContext) _Mutation_unlike(ctx context.Context, field graphql.
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_follow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_follow_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Follow(rctx, args["user"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_unfollow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_unfollow_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Unfollow(rctx, args["user"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Mutation_deleteReview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2464,6 +2650,48 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 	res := resTmp.(*model.User)
 	fc.Result = res
 	return ec.marshalOUser2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_users(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_users_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Users(rctx, args["followers"].(*string), args["following"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚕᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3103,6 +3331,38 @@ func (ec *executionContext) _User_image(ctx context.Context, field graphql.Colle
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _User_follow(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Follow, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -4569,6 +4829,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_like(ctx, field)
 		case "unlike":
 			out.Values[i] = ec._Mutation_unlike(ctx, field)
+		case "follow":
+			out.Values[i] = ec._Mutation_follow(ctx, field)
+		case "unfollow":
+			out.Values[i] = ec._Mutation_unfollow(ctx, field)
 		case "deleteReview":
 			out.Values[i] = ec._Mutation_deleteReview(ctx, field)
 		default:
@@ -4684,6 +4948,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_user(ctx, field)
+				return res
+			})
+		case "users":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_users(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "__type":
@@ -4814,6 +5092,8 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._User_created(ctx, field, obj)
 		case "image":
 			out.Values[i] = ec._User_image(ctx, field, obj)
+		case "follow":
+			out.Values[i] = ec._User_follow(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5351,6 +5631,43 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v []*model.User) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOUser2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐUser(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {

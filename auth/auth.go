@@ -63,6 +63,12 @@ func Middleware() func(http.Handler) http.Handler {
 			}
 			role, _ := claims["role"].(string)
 
+			// Check if refresh token
+			if claims["logout"] != nil {
+				http.Error(w, "{\"errors\":[{\"message\": \"Invalid token\",\"extensions\": {\"code\": \"AUTHENTICATION_ERROR\"}}]}", http.StatusOK)
+				return
+			}
+
 			// put it in context
 			user := User{ID: id, Role: role}
 			ctx := context.WithValue(r.Context(), userCtxKey, &user)

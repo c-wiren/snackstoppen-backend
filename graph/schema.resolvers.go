@@ -345,6 +345,34 @@ func (r *mutationResolver) Unlike(ctx context.Context, review int) (*bool, error
 	return nil, nil
 }
 
+func (r *mutationResolver) Follow(ctx context.Context, user int) (*bool, error) {
+	reqUser := auth.ForContext(ctx)
+	if reqUser == nil {
+		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
+	}
+	// Insert like into database
+	commandTag, err := r.DB.Exec(ctx, `INSERT INTO follows(user_id, follows_user_id)
+	values($1, $2);`, reqUser.ID, user)
+	if commandTag.RowsAffected() != 1 || err != nil {
+		return nil, gqlerror.Errorf("Could not follow user")
+	}
+	return nil, nil
+}
+
+func (r *mutationResolver) Unfollow(ctx context.Context, user int) (*bool, error) {
+	reqUser := auth.ForContext(ctx)
+	if reqUser == nil {
+		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
+	}
+	// Remove like from database
+	commandTag, err := r.DB.Exec(ctx, `DELETE FROM follows
+	WHERE follows_user_id=$1 AND user_id=$2;`, user, reqUser.ID)
+	if commandTag.RowsAffected() != 1 || err != nil {
+		return nil, gqlerror.Errorf("Could not unfollow user")
+	}
+	return nil, nil
+}
+
 func (r *mutationResolver) DeleteReview(ctx context.Context, review int) (*bool, error) {
 	user := auth.ForContext(ctx)
 	if user == nil {
@@ -652,7 +680,17 @@ func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *string,
 }
 
 func (r *queryResolver) User(ctx context.Context, username string) (*model.User, error) {
-	rows, err := r.DB.Query(ctx, `SELECT id, username, firstname, lastname, image, created FROM users WHERE username=$1 LIMIT 1`, username)
+	reqUser := auth.ForContext(ctx)
+	var userID *int
+	if reqUser != nil {
+		userID = &reqUser.ID
+	}
+	rows, err := r.DB.Query(ctx, `
+	SELECT users.id, users.username, users.firstname, users.lastname, users.image, users.created,
+	follows.follows_user_id IS NOT NULL AS follow
+	FROM users
+	LEFT JOIN follows ON users.id=follows.follows_user_id AND follows.user_id=$1
+	WHERE username=$2 LIMIT 1`, userID, username)
 	if err != nil {
 		fmt.Print(err)
 		panic(fmt.Errorf("user query failed"))
@@ -661,7 +699,7 @@ func (r *queryResolver) User(ctx context.Context, username string) (*model.User,
 	defer rows.Close()
 	if rows.Next() {
 		user := &model.User{}
-		err := rows.Scan(&user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &user.Created)
+		err := rows.Scan(&user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &user.Created, &user.Follow)
 		if err != nil {
 			fmt.Print(err)
 			panic(fmt.Errorf("user scan failed"))
@@ -670,6 +708,53 @@ func (r *queryResolver) User(ctx context.Context, username string) (*model.User,
 		return user, nil
 	}
 	return nil, nil
+}
+
+func (r *queryResolver) Users(ctx context.Context, followers *string, following *string) ([]*model.User, error) {
+	reqUser := auth.ForContext(ctx)
+	var userID *int
+	if reqUser != nil {
+		userID = &reqUser.ID
+	}
+	q := ""
+	var users []*model.User
+	var person *string
+	if (following != nil) == (followers != nil) {
+		return nil, &gqlerror.Error{Message: "Must choose either following or followers", Extensions: map[string]interface{}{"code": "USER_INPUT_ERROR"}}
+	}
+	if following != nil {
+		q = `SELECT users.id, users.username, users.firstname, users.lastname, users.image, users.created,
+		follows2.follows_user_id IS NOT NULL AS follow
+		FROM users AS person INNER JOIN follows ON person.id=follows.user_id AND person.username=$1
+		JOIN users ON follows.follows_user_id=users.id
+		LEFT JOIN follows AS follows2 ON users.id=follows2.follows_user_id AND follows2.user_id=$2`
+		person = following
+	}
+	if followers != nil {
+		q = `SELECT users.id, users.username, users.firstname, users.lastname, users.image, users.created,
+		follows2.follows_user_id IS NOT NULL AS follow
+		FROM users AS person INNER JOIN follows ON person.id=follows.follows_user_id AND person.username=$1
+		JOIN users ON follows.user_id=users.id
+		LEFT JOIN follows AS follows2 ON users.id=follows2.follows_user_id AND follows2.user_id=$2`
+		person = followers
+	}
+	rows, err := r.DB.Query(ctx, q, person, userID)
+	if err != nil {
+		fmt.Print(err)
+		panic(fmt.Errorf("users query failed"))
+
+	}
+	for rows.Next() {
+		user := &model.User{}
+		err := rows.Scan(&user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &user.Created, &user.Follow)
+		if err != nil {
+			fmt.Print(err)
+			panic(fmt.Errorf("users scan failed"))
+
+		}
+		users = append(users, user)
+	}
+	return users, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.

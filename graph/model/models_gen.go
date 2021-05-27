@@ -82,6 +82,7 @@ type User struct {
 	Lastname  *string    `json:"lastname"`
 	Created   *time.Time `json:"created"`
 	Image     *string    `json:"image"`
+	Follow    *bool      `json:"follow"`
 }
 
 type BrandSortByInput string
