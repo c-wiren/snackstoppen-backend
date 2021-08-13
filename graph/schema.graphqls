@@ -40,18 +40,18 @@ type Brand {
 type Review {
   id: ID!
   chips: Chip
-  rating: Int!
+  rating: Int
   review: String
   user: User
-  created: Time!
+  created: Time
   edited: Time
-  likes: Int!
-  liked: Boolean!
+  likes: Int
+  liked: Boolean
 }
 
 type User {
   id: ID!
-  username: String!
+  username: String
   firstname: String
   lastname: String
   created: Time
@@ -119,9 +119,9 @@ type Mutation {
   login(email: String!, password: String!): LoginResponse!
   refresh(token: String!): LoginResponse!
   logoutAll: Boolean
-  like(review: Int!): Boolean
-  unlike(review: Int!): Boolean
-  follow(user: Int!): Boolean
-  unfollow(user: Int!): Boolean
+  like(review: Int!): Review
+  unlike(review: Int!): Review
+  follow(user: Int!): User
+  unfollow(user: Int!): User
   deleteReview(review: Int!): Boolean
 }

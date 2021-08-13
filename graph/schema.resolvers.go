@@ -317,7 +317,7 @@ func (r *mutationResolver) LogoutAll(ctx context.Context) (*bool, error) {
 	return nil, nil
 }
 
-func (r *mutationResolver) Like(ctx context.Context, review int) (*bool, error) {
+func (r *mutationResolver) Like(ctx context.Context, review int) (*model.Review, error) {
 	user := auth.ForContext(ctx)
 	if user == nil {
 		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
@@ -328,10 +328,11 @@ func (r *mutationResolver) Like(ctx context.Context, review int) (*bool, error) 
 	if commandTag.RowsAffected() != 1 || err != nil {
 		return nil, gqlerror.Errorf("Could not create like")
 	}
-	return nil, nil
+	result := true
+	return &model.Review{ID: review, Liked: &result}, nil
 }
 
-func (r *mutationResolver) Unlike(ctx context.Context, review int) (*bool, error) {
+func (r *mutationResolver) Unlike(ctx context.Context, review int) (*model.Review, error) {
 	user := auth.ForContext(ctx)
 	if user == nil {
 		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
@@ -342,10 +343,11 @@ func (r *mutationResolver) Unlike(ctx context.Context, review int) (*bool, error
 	if commandTag.RowsAffected() != 1 || err != nil {
 		return nil, gqlerror.Errorf("Like could not be removed")
 	}
-	return nil, nil
+	result := false
+	return &model.Review{ID: review, Liked: &result}, nil
 }
 
-func (r *mutationResolver) Follow(ctx context.Context, user int) (*bool, error) {
+func (r *mutationResolver) Follow(ctx context.Context, user int) (*model.User, error) {
 	reqUser := auth.ForContext(ctx)
 	if reqUser == nil {
 		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
@@ -356,10 +358,11 @@ func (r *mutationResolver) Follow(ctx context.Context, user int) (*bool, error) 
 	if commandTag.RowsAffected() != 1 || err != nil {
 		return nil, gqlerror.Errorf("Could not follow user")
 	}
-	return nil, nil
+	result := true
+	return &model.User{ID: user, Follow: &result}, nil
 }
 
-func (r *mutationResolver) Unfollow(ctx context.Context, user int) (*bool, error) {
+func (r *mutationResolver) Unfollow(ctx context.Context, user int) (*model.User, error) {
 	reqUser := auth.ForContext(ctx)
 	if reqUser == nil {
 		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
@@ -370,7 +373,8 @@ func (r *mutationResolver) Unfollow(ctx context.Context, user int) (*bool, error
 	if commandTag.RowsAffected() != 1 || err != nil {
 		return nil, gqlerror.Errorf("Could not unfollow user")
 	}
-	return nil, nil
+	result := false
+	return &model.User{ID: user, Follow: &result}, nil
 }
 
 func (r *mutationResolver) DeleteReview(ctx context.Context, review int) (*bool, error) {

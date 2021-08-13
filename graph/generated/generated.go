@@ -135,10 +135,10 @@ type MutationResolver interface {
 	Login(ctx context.Context, email string, password string) (*model.LoginResponse, error)
 	Refresh(ctx context.Context, token string) (*model.LoginResponse, error)
 	LogoutAll(ctx context.Context) (*bool, error)
-	Like(ctx context.Context, review int) (*bool, error)
-	Unlike(ctx context.Context, review int) (*bool, error)
-	Follow(ctx context.Context, user int) (*bool, error)
-	Unfollow(ctx context.Context, user int) (*bool, error)
+	Like(ctx context.Context, review int) (*model.Review, error)
+	Unlike(ctx context.Context, review int) (*model.Review, error)
+	Follow(ctx context.Context, user int) (*model.User, error)
+	Unfollow(ctx context.Context, user int) (*model.User, error)
 	DeleteReview(ctx context.Context, review int) (*bool, error)
 }
 type QueryResolver interface {
@@ -774,18 +774,18 @@ type Brand {
 type Review {
   id: ID!
   chips: Chip
-  rating: Int!
+  rating: Int
   review: String
   user: User
-  created: Time!
+  created: Time
   edited: Time
-  likes: Int!
-  liked: Boolean!
+  likes: Int
+  liked: Boolean
 }
 
 type User {
   id: ID!
-  username: String!
+  username: String
   firstname: String
   lastname: String
   created: Time
@@ -853,10 +853,10 @@ type Mutation {
   login(email: String!, password: String!): LoginResponse!
   refresh(token: String!): LoginResponse!
   logoutAll: Boolean
-  like(review: Int!): Boolean
-  unlike(review: Int!): Boolean
-  follow(user: Int!): Boolean
-  unfollow(user: Int!): Boolean
+  like(review: Int!): Review
+  unlike(review: Int!): Review
+  follow(user: Int!): User
+  unfollow(user: Int!): User
   deleteReview(review: Int!): Boolean
 }`, BuiltIn: false},
 }
@@ -2224,9 +2224,9 @@ func (ec *executionContext) _Mutation_like(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(*model.Review)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOReview2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐReview(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_unlike(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2263,9 +2263,9 @@ func (ec *executionContext) _Mutation_unlike(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(*model.Review)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOReview2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐReview(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_follow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2302,9 +2302,9 @@ func (ec *executionContext) _Mutation_follow(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(*model.User)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOUser2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_unfollow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2341,9 +2341,9 @@ func (ec *executionContext) _Mutation_unfollow(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(*model.User)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOUser2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_deleteReview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2875,14 +2875,11 @@ func (ec *executionContext) _Review_rating(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Review_review(ctx context.Context, field graphql.CollectedField, obj *model.Review) (ret graphql.Marshaler) {
@@ -2974,14 +2971,11 @@ func (ec *executionContext) _Review_created(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(time.Time)
+	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Review_edited(ctx context.Context, field graphql.CollectedField, obj *model.Review) (ret graphql.Marshaler) {
@@ -3041,14 +3035,11 @@ func (ec *executionContext) _Review_likes(ctx context.Context, field graphql.Col
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Review_liked(ctx context.Context, field graphql.CollectedField, obj *model.Review) (ret graphql.Marshaler) {
@@ -3076,14 +3067,11 @@ func (ec *executionContext) _Review_liked(ctx context.Context, field graphql.Col
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _SearchResponse_user(ctx context.Context, field graphql.CollectedField, obj *model.SearchResponse) (ret graphql.Marshaler) {
@@ -3213,14 +3201,11 @@ func (ec *executionContext) _User_username(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_firstname(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -5081,30 +5066,18 @@ func (ec *executionContext) _Review(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Review_chips(ctx, field, obj)
 		case "rating":
 			out.Values[i] = ec._Review_rating(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "review":
 			out.Values[i] = ec._Review_review(ctx, field, obj)
 		case "user":
 			out.Values[i] = ec._Review_user(ctx, field, obj)
 		case "created":
 			out.Values[i] = ec._Review_created(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "edited":
 			out.Values[i] = ec._Review_edited(ctx, field, obj)
 		case "likes":
 			out.Values[i] = ec._Review_likes(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "liked":
 			out.Values[i] = ec._Review_liked(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5163,9 +5136,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "username":
 			out.Values[i] = ec._User_username(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "firstname":
 			out.Values[i] = ec._User_firstname(ctx, field, obj)
 		case "lastname":

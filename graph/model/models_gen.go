@@ -61,13 +61,13 @@ type NewUser struct {
 type Review struct {
 	ID      int        `json:"id"`
 	Chips   *Chip      `json:"chips"`
-	Rating  int        `json:"rating"`
+	Rating  *int       `json:"rating"`
 	Review  *string    `json:"review"`
 	User    *User      `json:"user"`
-	Created time.Time  `json:"created"`
+	Created *time.Time `json:"created"`
 	Edited  *time.Time `json:"edited"`
-	Likes   int        `json:"likes"`
-	Liked   bool       `json:"liked"`
+	Likes   *int       `json:"likes"`
+	Liked   *bool      `json:"liked"`
 }
 
 type SearchResponse struct {
@@ -77,7 +77,7 @@ type SearchResponse struct {
 
 type User struct {
 	ID        int        `json:"id"`
-	Username  string     `json:"username"`
+	Username  *string    `json:"username"`
 	Firstname *string    `json:"firstname"`
 	Lastname  *string    `json:"lastname"`
 	Created   *time.Time `json:"created"`

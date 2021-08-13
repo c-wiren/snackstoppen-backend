@@ -4,7 +4,7 @@ import "time"
 
 type CompleteUser struct {
 	ID        int
-	Username  string
+	Username  *string
 	Password  string
 	Email     string
 	Firstname *string
