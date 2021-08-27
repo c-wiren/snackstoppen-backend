@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/c-wiren/snackstoppen-backend/graph/model"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 // A private key for context that only this package can access. This is important

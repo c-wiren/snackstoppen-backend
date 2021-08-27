@@ -4,10 +4,10 @@ go 1.16
 
 require (
 	github.com/99designs/gqlgen v0.13.0
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/go-chi/chi/v5 v5.0.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.0.0 // indirect
 	github.com/jackc/pgx/v4 v4.10.1
 	github.com/mailgun/mailgun-go/v4 v4.4.1
 	github.com/minio/minio-go/v7 v7.0.10 // indirect
