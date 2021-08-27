@@ -741,6 +741,7 @@ scalar Upload
 
 enum ChipSortByInput {
   NAME_ASC
+  RATING_DESC
 }
 
 enum ReviewSortByInput {
@@ -798,10 +799,21 @@ type User {
 type Query {
   search(q: String!): SearchResponse!
   chip(brand: String!, slug: String!): Chip
-  chips(brand: String, order_by: ChipSortByInput, limit: Int = 20, offset: Int = 0): [Chip]!
+  chips(
+    brand: String
+    order_by: ChipSortByInput
+    limit: Int = 20
+    offset: Int = 0
+  ): [Chip]!
   brand(id: String!): Brand
   brands(order_by: BrandSortByInput): [Brand]!
-  reviews(chips: Int, author: String, limit: Int = 10, offset: Int = 0, order_by: ReviewSortByInput = DATE_DESC): [Review]!
+  reviews(
+    chips: Int
+    author: String
+    limit: Int = 10
+    offset: Int = 0
+    order_by: ReviewSortByInput = DATE_DESC
+  ): [Review]!
   user(username: String!): User
   users(followers: String, following: String): [User]!
 }
@@ -858,7 +870,8 @@ type Mutation {
   follow(user: Int!): User
   unfollow(user: Int!): User
   deleteReview(review: Int!): Boolean
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 

@@ -129,16 +129,18 @@ func (e BrandSortByInput) MarshalGQL(w io.Writer) {
 type ChipSortByInput string
 
 const (
-	ChipSortByInputNameAsc ChipSortByInput = "NAME_ASC"
+	ChipSortByInputNameAsc    ChipSortByInput = "NAME_ASC"
+	ChipSortByInputRatingDesc ChipSortByInput = "RATING_DESC"
 )
 
 var AllChipSortByInput = []ChipSortByInput{
 	ChipSortByInputNameAsc,
+	ChipSortByInputRatingDesc,
 }
 
 func (e ChipSortByInput) IsValid() bool {
 	switch e {
-	case ChipSortByInputNameAsc:
+	case ChipSortByInputNameAsc, ChipSortByInputRatingDesc:
 		return true
 	}
 	return false

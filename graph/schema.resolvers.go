@@ -485,8 +485,14 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model
 		q += fmt.Sprint(" WHERE chips.brand_id=$", argCount)
 		args = append(args, brand)
 	}
-	if orderBy != nil && *orderBy == model.ChipSortByInputNameAsc {
-		q += " ORDER BY chips.name"
+
+	if orderBy != nil {
+		switch *orderBy {
+		case model.ChipSortByInputNameAsc:
+			q += " ORDER BY chips.name"
+		case model.ChipSortByInputRatingDesc:
+			q += " ORDER BY chips.rating DESC"
+		}
 	}
 	if limit != nil {
 		argCount++
