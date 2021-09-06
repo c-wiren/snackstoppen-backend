@@ -20,7 +20,7 @@ import (
 	"github.com/disintegration/imaging"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
-	"github.com/golang-jwt/jwt/v4"
+	jwt "github.com/golang-jwt/jwt/v4"
 	minio "github.com/minio/minio-go/v7"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/bcrypt"
@@ -528,7 +528,7 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model
 }
 
 func (r *queryResolver) Brand(ctx context.Context, id string) (*model.Brand, error) {
-	rows, err := r.DB.Query(ctx, `SELECT id, image, name, count FROM brands WHERE id=$1 LIMIT 1`, id)
+	rows, err := r.DB.Query(ctx, `SELECT id, image, name, count, categories FROM brands WHERE id=$1 LIMIT 1`, id)
 	if err != nil {
 		fmt.Print(err)
 		panic(fmt.Errorf("brand query failed"))
@@ -537,11 +537,10 @@ func (r *queryResolver) Brand(ctx context.Context, id string) (*model.Brand, err
 	defer rows.Close()
 	if rows.Next() {
 		brand := &model.Brand{}
-		err := rows.Scan(&brand.ID, &brand.Image, &brand.Name, &brand.Count)
+		err := rows.Scan(&brand.ID, &brand.Image, &brand.Name, &brand.Count, &brand.Categories)
 		if err != nil {
 			fmt.Print(err)
 			panic(fmt.Errorf("brand scan failed"))
-
 		}
 		return brand, nil
 	}

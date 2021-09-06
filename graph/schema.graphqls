@@ -4,6 +4,7 @@
 
 scalar Time
 scalar Upload
+scalar JSON
 
 enum ChipSortByInput {
   NAME_ASC
@@ -36,6 +37,7 @@ type Brand {
   count: Int!
   image: String
   name: String!
+  categories: JSON
 }
 
 type Review {
