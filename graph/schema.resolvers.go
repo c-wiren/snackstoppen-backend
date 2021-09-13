@@ -474,16 +474,37 @@ func (r *queryResolver) Chip(ctx context.Context, brand string, slug string) (*m
 	return nil, nil
 }
 
-func (r *queryResolver) Chips(ctx context.Context, brand *string, orderBy *model.ChipSortByInput, limit *int, offset *int) ([]*model.Chip, error) {
+func (r *queryResolver) Chips(ctx context.Context, brand *string, category *string, subcategory *string, orderBy *model.ChipSortByInput, limit *int, offset *int) ([]*model.Chip, error) {
 	argCount := 0
 	var args []interface{}
 	q := `
 	SELECT chips.name,category,subcategory,chips.slug,chips.image,ingredients,chips.id,chips.rating,chips.reviews,brands.id,brands.image,brands.count,brands.name
 	FROM chips INNER JOIN brands ON chips.brand_id=brands.id`
+
+	where := ""
 	if brand != nil {
 		argCount++
-		q += fmt.Sprint(" WHERE chips.brand_id=$", argCount)
+		where += fmt.Sprint(" chips.brand_id=$", argCount)
 		args = append(args, brand)
+	}
+	if category != nil {
+		if where != "" {
+			where += " AND"
+		}
+		argCount++
+		where += fmt.Sprint(" chips.category=$", argCount)
+		args = append(args, category)
+	}
+	if subcategory != nil {
+		if where != "" {
+			where += " AND"
+		}
+		argCount++
+		where += fmt.Sprint(" chips.subcategory=$", argCount)
+		args = append(args, subcategory)
+	}
+	if where != "" {
+		q += " WHERE" + where
 	}
 
 	if orderBy != nil {

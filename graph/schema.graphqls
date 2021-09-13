@@ -69,6 +69,8 @@ type Query {
   chip(brand: String!, slug: String!): Chip
   chips(
     brand: String
+    category: String
+    subcategory: String
     order_by: ChipSortByInput
     limit: Int = 20
     offset: Int = 0

@@ -91,7 +91,7 @@ type ComplexityRoot struct {
 		Brand   func(childComplexity int, id string) int
 		Brands  func(childComplexity int, orderBy *model.BrandSortByInput) int
 		Chip    func(childComplexity int, brand string, slug string) int
-		Chips   func(childComplexity int, brand *string, orderBy *model.ChipSortByInput, limit *int, offset *int) int
+		Chips   func(childComplexity int, brand *string, category *string, subcategory *string, orderBy *model.ChipSortByInput, limit *int, offset *int) int
 		Reviews func(childComplexity int, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) int
 		Search  func(childComplexity int, q string) int
 		User    func(childComplexity int, username string) int
@@ -145,7 +145,7 @@ type MutationResolver interface {
 type QueryResolver interface {
 	Search(ctx context.Context, q string) (*model.SearchResponse, error)
 	Chip(ctx context.Context, brand string, slug string) (*model.Chip, error)
-	Chips(ctx context.Context, brand *string, orderBy *model.ChipSortByInput, limit *int, offset *int) ([]*model.Chip, error)
+	Chips(ctx context.Context, brand *string, category *string, subcategory *string, orderBy *model.ChipSortByInput, limit *int, offset *int) ([]*model.Chip, error)
 	Brand(ctx context.Context, id string) (*model.Brand, error)
 	Brands(ctx context.Context, orderBy *model.BrandSortByInput) ([]*model.Brand, error)
 	Reviews(ctx context.Context, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error)
@@ -486,7 +486,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Chips(childComplexity, args["brand"].(*string), args["order_by"].(*model.ChipSortByInput), args["limit"].(*int), args["offset"].(*int)), true
+		return e.complexity.Query.Chips(childComplexity, args["brand"].(*string), args["category"].(*string), args["subcategory"].(*string), args["order_by"].(*model.ChipSortByInput), args["limit"].(*int), args["offset"].(*int)), true
 
 	case "Query.reviews":
 		if e.complexity.Query.Reviews == nil {
@@ -811,6 +811,8 @@ type Query {
   chip(brand: String!, slug: String!): Chip
   chips(
     brand: String
+    category: String
+    subcategory: String
     order_by: ChipSortByInput
     limit: Int = 20
     offset: Int = 0
@@ -1144,33 +1146,51 @@ func (ec *executionContext) field_Query_chips_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["brand"] = arg0
-	var arg1 *model.ChipSortByInput
+	var arg1 *string
+	if tmp, ok := rawArgs["category"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("category"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["category"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["subcategory"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subcategory"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subcategory"] = arg2
+	var arg3 *model.ChipSortByInput
 	if tmp, ok := rawArgs["order_by"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("order_by"))
-		arg1, err = ec.unmarshalOChipSortByInput2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐChipSortByInput(ctx, tmp)
+		arg3, err = ec.unmarshalOChipSortByInput2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐChipSortByInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["order_by"] = arg1
-	var arg2 *int
+	args["order_by"] = arg3
+	var arg4 *int
 	if tmp, ok := rawArgs["limit"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		arg4, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["limit"] = arg2
-	var arg3 *int
+	args["limit"] = arg4
+	var arg5 *int
 	if tmp, ok := rawArgs["offset"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
-		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		arg5, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["offset"] = arg3
+	args["offset"] = arg5
 	return args, nil
 }
 
@@ -2546,7 +2566,7 @@ func (ec *executionContext) _Query_chips(ctx context.Context, field graphql.Coll
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Chips(rctx, args["brand"].(*string), args["order_by"].(*model.ChipSortByInput), args["limit"].(*int), args["offset"].(*int))
+		return ec.resolvers.Query().Chips(rctx, args["brand"].(*string), args["category"].(*string), args["subcategory"].(*string), args["order_by"].(*model.ChipSortByInput), args["limit"].(*int), args["offset"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
