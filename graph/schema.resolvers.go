@@ -519,7 +519,7 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, category *stri
 		case model.ChipSortByInputNameAsc:
 			q += " ORDER BY chips.name"
 		case model.ChipSortByInputRatingDesc:
-			q += " ORDER BY chips.rating DESC"
+			q += " ORDER BY chips.rating DESC, chips.name"
 		}
 	}
 	if limit != nil {
@@ -623,6 +623,8 @@ func (r *queryResolver) Review(ctx context.Context, id *int) (*model.Review, err
 	argCount++
 	q += fmt.Sprint(" WHERE reviews.id=$", argCount)
 	args = append(args, id)
+
+	q += " LIMIT 1"
 
 	rows, err := r.DB.Query(ctx, q, args...)
 	if err != nil {
