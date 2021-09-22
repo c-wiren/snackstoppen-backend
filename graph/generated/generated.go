@@ -91,7 +91,8 @@ type ComplexityRoot struct {
 		Brand   func(childComplexity int, id string) int
 		Brands  func(childComplexity int, orderBy *model.BrandSortByInput) int
 		Chip    func(childComplexity int, brand string, slug string) int
-		Chips   func(childComplexity int, brand *string, category *string, subcategory *string, orderBy *model.ChipSortByInput, limit *int, offset *int) int
+		Chips   func(childComplexity int, brand *string, category *string, subcategory []*string, orderBy *model.ChipSortByInput, limit *int, offset *int) int
+		Review  func(childComplexity int, id *int) int
 		Reviews func(childComplexity int, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) int
 		Search  func(childComplexity int, q string) int
 		User    func(childComplexity int, username string) int
@@ -145,9 +146,10 @@ type MutationResolver interface {
 type QueryResolver interface {
 	Search(ctx context.Context, q string) (*model.SearchResponse, error)
 	Chip(ctx context.Context, brand string, slug string) (*model.Chip, error)
-	Chips(ctx context.Context, brand *string, category *string, subcategory *string, orderBy *model.ChipSortByInput, limit *int, offset *int) ([]*model.Chip, error)
+	Chips(ctx context.Context, brand *string, category *string, subcategory []*string, orderBy *model.ChipSortByInput, limit *int, offset *int) ([]*model.Chip, error)
 	Brand(ctx context.Context, id string) (*model.Brand, error)
 	Brands(ctx context.Context, orderBy *model.BrandSortByInput) ([]*model.Brand, error)
+	Review(ctx context.Context, id *int) (*model.Review, error)
 	Reviews(ctx context.Context, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error)
 	User(ctx context.Context, username string) (*model.User, error)
 	Users(ctx context.Context, followers *string, following *string) ([]*model.User, error)
@@ -486,7 +488,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Chips(childComplexity, args["brand"].(*string), args["category"].(*string), args["subcategory"].(*string), args["order_by"].(*model.ChipSortByInput), args["limit"].(*int), args["offset"].(*int)), true
+		return e.complexity.Query.Chips(childComplexity, args["brand"].(*string), args["category"].(*string), args["subcategory"].([]*string), args["order_by"].(*model.ChipSortByInput), args["limit"].(*int), args["offset"].(*int)), true
+
+	case "Query.review":
+		if e.complexity.Query.Review == nil {
+			break
+		}
+
+		args, err := ec.field_Query_review_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Review(childComplexity, args["id"].(*int)), true
 
 	case "Query.reviews":
 		if e.complexity.Query.Reviews == nil {
@@ -812,13 +826,14 @@ type Query {
   chips(
     brand: String
     category: String
-    subcategory: String
+    subcategory: [String]
     order_by: ChipSortByInput
     limit: Int = 20
     offset: Int = 0
   ): [Chip]!
   brand(id: String!): Brand
   brands(order_by: BrandSortByInput): [Brand]!
+  review(id: Int): Review
   reviews(
     chips: Int
     author: String
@@ -1155,10 +1170,10 @@ func (ec *executionContext) field_Query_chips_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["category"] = arg1
-	var arg2 *string
+	var arg2 []*string
 	if tmp, ok := rawArgs["subcategory"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subcategory"))
-		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg2, err = ec.unmarshalOString2ᚕᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1191,6 +1206,21 @@ func (ec *executionContext) field_Query_chips_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["offset"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_review_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -2566,7 +2596,7 @@ func (ec *executionContext) _Query_chips(ctx context.Context, field graphql.Coll
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Chips(rctx, args["brand"].(*string), args["category"].(*string), args["subcategory"].(*string), args["order_by"].(*model.ChipSortByInput), args["limit"].(*int), args["offset"].(*int))
+		return ec.resolvers.Query().Chips(rctx, args["brand"].(*string), args["category"].(*string), args["subcategory"].([]*string), args["order_by"].(*model.ChipSortByInput), args["limit"].(*int), args["offset"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2662,6 +2692,45 @@ func (ec *executionContext) _Query_brands(ctx context.Context, field graphql.Col
 	res := resTmp.([]*model.Brand)
 	fc.Result = res
 	return ec.marshalNBrand2ᚕᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐBrand(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_review(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_review_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Review(rctx, args["id"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Review)
+	fc.Result = res
+	return ec.marshalOReview2ᚖgithubᚗcomᚋcᚑwirenᚋsnackstoppenᚑbackendᚋgraphᚋmodelᚐReview(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_reviews(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -5069,6 +5138,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "review":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_review(ctx, field)
+				return res
+			})
 		case "reviews":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -6172,6 +6252,42 @@ func (ec *executionContext) unmarshalOString2string(ctx context.Context, v inter
 
 func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	return graphql.MarshalString(v)
+}
+
+func (ec *executionContext) unmarshalOString2ᚕᚖstring(ctx context.Context, v interface{}) ([]*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalOString2ᚖstring(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOString2ᚕᚖstring(ctx context.Context, sel ast.SelectionSet, v []*string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalOString2ᚖstring(ctx, sel, v[i])
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

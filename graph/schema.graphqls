@@ -70,13 +70,14 @@ type Query {
   chips(
     brand: String
     category: String
-    subcategory: String
+    subcategory: [String]
     order_by: ChipSortByInput
     limit: Int = 20
     offset: Int = 0
   ): [Chip]!
   brand(id: String!): Brand
   brands(order_by: BrandSortByInput): [Brand]!
+  review(id: Int): Review
   reviews(
     chips: Int
     author: String

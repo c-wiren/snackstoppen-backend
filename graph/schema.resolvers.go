@@ -474,7 +474,7 @@ func (r *queryResolver) Chip(ctx context.Context, brand string, slug string) (*m
 	return nil, nil
 }
 
-func (r *queryResolver) Chips(ctx context.Context, brand *string, category *string, subcategory *string, orderBy *model.ChipSortByInput, limit *int, offset *int) ([]*model.Chip, error) {
+func (r *queryResolver) Chips(ctx context.Context, brand *string, category *string, subcategory []*string, orderBy *model.ChipSortByInput, limit *int, offset *int) ([]*model.Chip, error) {
 	argCount := 0
 	var args []interface{}
 	q := `
@@ -495,13 +495,20 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, category *stri
 		where += fmt.Sprint(" chips.category=$", argCount)
 		args = append(args, category)
 	}
-	if subcategory != nil {
+	if len(subcategory) > 0 {
 		if where != "" {
 			where += " AND"
 		}
-		argCount++
-		where += fmt.Sprint(" chips.subcategory=$", argCount)
-		args = append(args, subcategory)
+		where += " chips.subcategory IN ("
+		for i, subcat := range subcategory {
+			if i > 0 {
+				where += ","
+			}
+			argCount++
+			where += fmt.Sprint("$", argCount)
+			args = append(args, subcat)
+		}
+		where += ")"
 	}
 	if where != "" {
 		q += " WHERE" + where
@@ -591,6 +598,56 @@ func (r *queryResolver) Brands(ctx context.Context, orderBy *model.BrandSortByIn
 		brands = append(brands, brand)
 	}
 	return brands, nil
+}
+
+func (r *queryResolver) Review(ctx context.Context, id *int) (*model.Review, error) {
+	user := auth.ForContext(ctx)
+	var userID *int
+	if user != nil {
+		userID = &user.ID
+	}
+	argCount := 0
+	var args []interface{}
+	q := `SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes,
+	users.id, users.username, users.firstname, users.lastname, users.image,
+	chips.id, chips.name, chips.slug, chips.image, chips.rating, chips.reviews, chips.category, chips.subcategory,
+	brands.id, brands.name, likes.user_id IS NOT NULL AS liked
+	FROM reviews INNER JOIN users ON reviews.user_id=users.id
+	INNER JOIN chips ON reviews.chips_id=chips.id
+	INNER JOIN brands ON chips.brand_id=brands.id
+	`
+	argCount++
+	q += fmt.Sprint(" LEFT JOIN likes ON reviews.id=likes.review_id AND likes.user_id=$", argCount)
+	args = append(args, userID)
+
+	argCount++
+	q += fmt.Sprint(" WHERE reviews.id=$", argCount)
+	args = append(args, id)
+
+	rows, err := r.DB.Query(ctx, q, args...)
+	if err != nil {
+		fmt.Print(err)
+		panic(fmt.Errorf("review query failed"))
+
+	}
+	defer rows.Close()
+	if rows.Next() {
+		review := &model.Review{}
+		user := &model.User{}
+		brand := &model.Brand{}
+		chips := &model.Chip{}
+		review.User = user
+		review.Chips = chips
+		chips.Brand = brand
+
+		err := rows.Scan(&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes, &user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &chips.ID, &chips.Name, &chips.Slug, &chips.Image, &chips.Rating, &chips.Reviews, &chips.Category, &chips.Subcategory, &brand.ID, &brand.Name, &review.Liked)
+		if err != nil {
+			fmt.Print(err)
+			panic(fmt.Errorf("review scan failed"))
+		}
+		return review, nil
+	}
+	return nil, nil
 }
 
 func (r *queryResolver) Reviews(ctx context.Context, chips *int, author *string, limit *int, offset *int, orderBy *model.ReviewSortByInput) ([]*model.Review, error) {
