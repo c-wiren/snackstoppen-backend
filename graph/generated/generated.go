@@ -74,7 +74,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		CreateChip    func(childComplexity int, chip model.NewChip) int
-		CreateReview  func(childComplexity int, review model.NewReview) int
+		CreateReview  func(childComplexity int, review model.NewReview, overwrite *bool) int
 		CreateUser    func(childComplexity int, user model.NewUser) int
 		DeleteReview  func(childComplexity int, review int) int
 		Follow        func(childComplexity int, user int) int
@@ -130,7 +130,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	CreateReview(ctx context.Context, review model.NewReview) (*model.Review, error)
+	CreateReview(ctx context.Context, review model.NewReview, overwrite *bool) (*model.Review, error)
 	CreateChip(ctx context.Context, chip model.NewChip) (*bool, error)
 	CreateUser(ctx context.Context, user model.NewUser) (*model.LoginResponse, error)
 	ValidateEmail(ctx context.Context, email string) (string, error)
@@ -325,7 +325,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateReview(childComplexity, args["review"].(model.NewReview)), true
+		return e.complexity.Mutation.CreateReview(childComplexity, args["review"].(model.NewReview), args["overwrite"].(*bool)), true
 
 	case "Mutation.createUser":
 		if e.complexity.Mutation.CreateUser == nil {
@@ -765,6 +765,7 @@ scalar JSON
 enum ChipSortByInput {
   NAME_ASC
   RATING_DESC
+  TOP
 }
 
 enum ReviewSortByInput {
@@ -885,7 +886,7 @@ input NewReview {
 }
 
 type Mutation {
-  createReview(review: NewReview!): Review!
+  createReview(review: NewReview!, overwrite: Boolean = false): Review!
   createChip(chip: NewChip!): Boolean
   createUser(user: NewUser!): LoginResponse!
   validateEmail(email: String!): String!
@@ -933,6 +934,15 @@ func (ec *executionContext) field_Mutation_createReview_args(ctx context.Context
 		}
 	}
 	args["review"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["overwrite"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overwrite"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["overwrite"] = arg1
 	return args, nil
 }
 
@@ -2039,7 +2049,7 @@ func (ec *executionContext) _Mutation_createReview(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateReview(rctx, args["review"].(model.NewReview))
+		return ec.resolvers.Mutation().CreateReview(rctx, args["review"].(model.NewReview), args["overwrite"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

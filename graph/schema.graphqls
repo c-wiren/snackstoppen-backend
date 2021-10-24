@@ -9,6 +9,7 @@ scalar JSON
 enum ChipSortByInput {
   NAME_ASC
   RATING_DESC
+  TOP
 }
 
 enum ReviewSortByInput {
@@ -129,7 +130,7 @@ input NewReview {
 }
 
 type Mutation {
-  createReview(review: NewReview!): Review!
+  createReview(review: NewReview!, overwrite: Boolean = false): Review!
   createChip(chip: NewChip!): Boolean
   createUser(user: NewUser!): LoginResponse!
   validateEmail(email: String!): String!

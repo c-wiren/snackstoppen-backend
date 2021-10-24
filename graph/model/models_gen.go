@@ -131,16 +131,18 @@ type ChipSortByInput string
 const (
 	ChipSortByInputNameAsc    ChipSortByInput = "NAME_ASC"
 	ChipSortByInputRatingDesc ChipSortByInput = "RATING_DESC"
+	ChipSortByInputTop        ChipSortByInput = "TOP"
 )
 
 var AllChipSortByInput = []ChipSortByInput{
 	ChipSortByInputNameAsc,
 	ChipSortByInputRatingDesc,
+	ChipSortByInputTop,
 }
 
 func (e ChipSortByInput) IsValid() bool {
 	switch e {
-	case ChipSortByInputNameAsc, ChipSortByInputRatingDesc:
+	case ChipSortByInputNameAsc, ChipSortByInputRatingDesc, ChipSortByInputTop:
 		return true
 	}
 	return false

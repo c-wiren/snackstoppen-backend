@@ -26,7 +26,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewReview) (*model.Review, error) {
+func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewReview, overwrite *bool) (*model.Review, error) {
 	user := auth.ForContext(ctx)
 	if user == nil {
 		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
@@ -39,6 +39,13 @@ func (r *mutationResolver) CreateReview(ctx context.Context, review model.NewRev
 
 	if review.Rating < 1 || review.Rating > 10 {
 		return nil, &gqlerror.Error{Message: "Input error", Extensions: map[string]interface{}{"code": "USER_INPUT_ERROR"}}
+	}
+
+	// Delete first if overwrite = true
+	if overwrite != nil && *overwrite {
+		// Remove review from database
+		r.DB.Exec(ctx, `DELETE FROM reviews
+	WHERE chips_id=$1 AND user_id=$2;`, review.Chips, user.ID)
 	}
 
 	// Insert review into DB
@@ -510,6 +517,11 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, category *stri
 		}
 		where += ")"
 	}
+
+	if orderBy != nil && *orderBy == model.ChipSortByInputTop {
+		where += " chips.reviews >= 3"
+	}
+
 	if where != "" {
 		q += " WHERE" + where
 	}
@@ -520,8 +532,11 @@ func (r *queryResolver) Chips(ctx context.Context, brand *string, category *stri
 			q += " ORDER BY chips.name"
 		case model.ChipSortByInputRatingDesc:
 			q += " ORDER BY chips.rating DESC, chips.name"
+		case model.ChipSortByInputTop:
+			q += " ORDER BY chips.rating DESC, chips.name"
 		}
 	}
+
 	if limit != nil {
 		argCount++
 		q += fmt.Sprint(" LIMIT $", argCount)
