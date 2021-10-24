@@ -615,7 +615,7 @@ func (r *queryResolver) Brands(ctx context.Context, orderBy *model.BrandSortByIn
 	return brands, nil
 }
 
-func (r *queryResolver) Review(ctx context.Context, id *int) (*model.Review, error) {
+func (r *queryResolver) Review(ctx context.Context, id *int, author *string, chips *int) (*model.Review, error) {
 	user := auth.ForContext(ctx)
 	var userID *int
 	if user != nil {
@@ -635,9 +635,19 @@ func (r *queryResolver) Review(ctx context.Context, id *int) (*model.Review, err
 	q += fmt.Sprint(" LEFT JOIN likes ON reviews.id=likes.review_id AND likes.user_id=$", argCount)
 	args = append(args, userID)
 
-	argCount++
-	q += fmt.Sprint(" WHERE reviews.id=$", argCount)
-	args = append(args, id)
+	if id != nil {
+		argCount++
+		q += fmt.Sprint(" WHERE reviews.id=$", argCount)
+		args = append(args, id)
+	} else {
+		argCount++
+		q += fmt.Sprint(" WHERE users.username=$", argCount)
+		args = append(args, author)
+
+		argCount++
+		q += fmt.Sprint(" AND reviews.chips_id=$", argCount)
+		args = append(args, chips)
+	}
 
 	q += " LIMIT 1"
 
