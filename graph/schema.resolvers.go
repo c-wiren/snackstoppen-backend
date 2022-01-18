@@ -884,12 +884,13 @@ func (r *queryResolver) Activity(ctx context.Context, limit int, offset int) ([]
 	chips.id, chips.name, chips.slug, chips.image, chips.rating, chips.reviews, chips.category, chips.subcategory,
 	brands.id, brands.name,
 	likes.user_id IS NOT NULL AS liked
-	FROM (SELECT follows_user_id FROM follows where user_id=$1 union select $1)follows
+	FROM /*(SELECT follows_user_id FROM follows where user_id=$1 union select $1)*/follows
 	INNER JOIN users ON follows.follows_user_id=users.id
 	INNER JOIN reviews ON follows.follows_user_id=reviews.user_id
 	INNER JOIN chips ON reviews.chips_id=chips.id
 	INNER JOIN brands ON chips.brand_id=brands.id
 	LEFT JOIN likes ON reviews.id=likes.review_id AND likes.user_id=$1
+	WHERE follows.user_id=$1
 	ORDER BY reviews.created DESC
 	LIMIT $2 OFFSET $3`
 
