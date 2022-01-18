@@ -88,6 +88,7 @@ type Query {
   ): [Review]!
   user(username: String!): User
   users(followers: String, following: String): [User]!
+  activity(limit: Int! = 20, offset: Int! = 0): [Review]!
 }
 
 type SearchResponse {

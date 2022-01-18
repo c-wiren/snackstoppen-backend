@@ -871,6 +871,57 @@ func (r *queryResolver) Users(ctx context.Context, followers *string, following 
 	return users, nil
 }
 
+func (r *queryResolver) Activity(ctx context.Context, limit int, offset int) ([]*model.Review, error) {
+	reqUser := auth.ForContext(ctx)
+	var userID int
+	if reqUser != nil {
+		userID = reqUser.ID
+	} else {
+		return nil, &gqlerror.Error{Message: "Must be logged in", Extensions: map[string]interface{}{"code": "UNAUTHORIZED"}}
+	}
+	q := /* sql */ `SELECT reviews.id, reviews.rating, reviews.review, reviews.created, reviews.edited, reviews.likes,
+	users.id, users.username, users.firstname, users.lastname, users.image,
+	chips.id, chips.name, chips.slug, chips.image, chips.rating, chips.reviews, chips.category, chips.subcategory,
+	brands.id, brands.name,
+	likes.user_id IS NOT NULL AS liked
+	FROM (SELECT follows_user_id FROM follows where user_id=$1 union select $1)follows
+	INNER JOIN users ON follows.follows_user_id=users.id
+	INNER JOIN reviews ON follows.follows_user_id=reviews.user_id
+	INNER JOIN chips ON reviews.chips_id=chips.id
+	INNER JOIN brands ON chips.brand_id=brands.id
+	LEFT JOIN likes ON reviews.id=likes.review_id AND likes.user_id=$1
+	ORDER BY reviews.created DESC
+	LIMIT $2 OFFSET $3`
+
+	var reviews []*model.Review
+	rows, err := r.DB.Query(ctx, q, userID, limit, offset)
+	if err != nil {
+		fmt.Print(err)
+		panic(fmt.Errorf("activity query failed"))
+
+	}
+	for rows.Next() {
+		review := &model.Review{}
+		user := &model.User{}
+		brand := &model.Brand{}
+		chips := &model.Chip{}
+		review.User = user
+		review.Chips = chips
+		chips.Brand = brand
+
+		err := rows.Scan(
+			&review.ID, &review.Rating, &review.Review, &review.Created, &review.Edited, &review.Likes,
+			&user.ID, &user.Username, &user.Firstname, &user.Lastname, &user.Image, &chips.ID, &chips.Name, &chips.Slug, &chips.Image, &chips.Rating, &chips.Reviews, &chips.Category, &chips.Subcategory,
+			&brand.ID, &brand.Name, &review.Liked)
+		if err != nil {
+			fmt.Print(err)
+			panic(fmt.Errorf("activity scan failed"))
+		}
+		reviews = append(reviews, review)
+	}
+	return reviews, nil
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
