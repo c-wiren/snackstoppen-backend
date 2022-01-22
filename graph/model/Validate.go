@@ -25,7 +25,7 @@ func (c NewChip) Validate() error {
 func (u NewUser) Validate() error {
 	return validation.ValidateStruct(&u,
 		validation.Field(&u.Email, is.EmailFormat),
-		validation.Field(&u.Username, validation.Match(regexp.MustCompile("^[a-zA-Z0-9-_]{2,20}"))),
+		validation.Field(&u.Username, validation.Match(regexp.MustCompile("^[a-zA-Z0-9-_]{2,20}$"))),
 		validation.Field(&u.Firstname, validation.Length(0, 35)),
 		validation.Field(&u.Lastname, validation.Length(0, 35)),
 		validation.Field(&u.Password, validation.Required, validation.Length(8, 128)),
